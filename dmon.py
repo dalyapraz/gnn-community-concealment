@@ -7,8 +7,11 @@ They include, GCN, GAT, MinCut, GraphSAGE, DiffPool, DMon
 
 import torch
 import torch.nn.functional as F
+import torch.nn as nn
+from torch_scatter import scatter_add
 from torch_geometric.nn import GCNConv, GATConv, SAGEConv,dense_mincut_pool, dense_diff_pool
-from torch_geometric.utils import to_dense_adj
+from torch_geometric.nn import DenseGCNConv, DMoNPooling
+from torch_geometric.utils import to_dense_adj, to_dense_batch
 from torch.nn import Linear
 
 
@@ -157,30 +160,81 @@ class DiffPool(torch.nn.Module):
         out = self.classifier(x)
         
         return F.log_softmax(out, dim=-1), mc_loss, o_loss
-
-
     
-class DMoN(torch.nn.Module):
-    def __init__(self, in_channels, num_clusters, hidden_channels=16):
+
+
+
+# The DMoN model for unsupervised clustering
+# GCN with no self loops but with skip connections
+# and a pooling layer that uses the DMoN pooling method
+    
+
+class GCNWithSkip(nn.Module):
+    def __init__(self, in_channels, out_channels, skip_connection=True):
         super().__init__()
-        self.conv1 = GCNConv(in_channels, hidden_channels)
-        self.pool1 = DMoNPooling([hidden_channels, hidden_channels], num_clusters)
-        self.conv2 = DenseGCNConv(hidden_channels, hidden_channels) 
-        self.pool2 = DMoNPooling([hidden_channels, hidden_channels], num_clusters)
+        self.linear = nn.Linear(in_channels, out_channels, bias=False)  # No bias, just X * W
+        self.skip_connection = skip_connection
+        if skip_connection:
+            self.skip_weight = nn.Parameter(torch.ones(out_channels) * 0.1)
+        else:
+            self.skip_weight = 0
+
+    def forward(self, x, edge_index):
+        row, col = edge_index
+        deg = scatter_add(torch.ones_like(row, dtype=torch.float), row, dim=0, dim_size=x.size(0))
+        deg_inv_sqrt = deg.pow(-0.5)
+        deg_inv_sqrt[deg == 0] = 0
+        norm = deg_inv_sqrt[row] * deg_inv_sqrt[col]
+
+        x_lin = self.linear(x)  # X * W
+        messages = norm.view(-1, 1) * x_lin[col]
+        out = scatter_add(messages, row, dim=0, dim_size=x.size(0))
+
+        if self.skip_connection:
+            out = x_lin * self.skip_weight + out
+
+        return out
+
+
+
+
+class DMoN(torch.nn.Module):
+    def __init__(self, in_channels, num_clusters, hidden_channels=64, gcn_skip = False):
+        super().__init__()
+        if gcn_skip:
+            self.gcn = GCNConv(in_channels, hidden_channels, add_self_loops=False)
+        else:
+            self.gcn = GCNWithSkip(in_channels, hidden_channels)
+        self.pool = DMoNPooling([hidden_channels, hidden_channels], num_clusters, dropout=0.5)
+        # paper uses 1 layer only
+        # self.conv2 = DenseGCNConv(hidden_channels, hidden_channels) 
+        # self.pool2 = DMoNPooling([hidden_channels, hidden_channels], num_clusters)
         
     def forward(self, x, edge_index):
-        x = F.selu(self.conv1(x, edge_index))
+        x = F.selu(self.gcn(x, edge_index))
+        # x = F.dropout(x, p=0.5, training=self.training)
+        # Convert sparse to dense representation (for pooling)
         batch = torch.zeros(x.size(0), dtype=torch.long, device=x.device)
-        x, mask = to_dense_batch(x, batch=batch)
-        adj = to_dense_adj(edge_index, batch=batch)
-        
-        ca, x, adj, sl1, ol1, cl1 = self.pool1(x, adj, mask)
-        
-        x = F.selu(self.conv2(x, adj))
-        ca, x, adj, sl2, ol2, cl2 = self.pool2(x, adj)
+        x, mask = to_dense_batch(x, batch=batch) # x is now [1, N, F]
+        adj = to_dense_adj(edge_index, batch=batch) # adj is now [1, N, N]
+        # print("x shape after conv1:", x.shape)
+        # print("adj shape:", adj.shape)
+        # print("mask shape:", mask.shape)
+        # Apply pooling
+        clusters_assigned, x, adj, spectral_loss, ortho_loss, collapse_loss = self.pool(x, adj, mask) 
+        # print("ca1:", ca.shape)  # should be [1, N, K]
+        # print("x after pool1:", x.shape)
+        # print("adj after pool1:", adj.shape)
+        # Apply second convolution
+        # x = F.selu(self.conv2(x, adj))
+        # ca, x, adj, sl2, ol2, cl2 = self.pool2(x, adj)
+        # print("ca2:", ca.shape)  # should still be [1, N', K]
+        # print("x after pool2:", x.shape)
+        # print("adj after pool2:", adj.shape)
         
         # Return cluster assignments and combined losses
-        return ca.squeeze(0), sl1 + sl2 + ol1 + ol2 + cl1 + cl2
+        # return ca.squeeze(0), sl1 + sl2 + ol1 + ol2 + cl1 + cl2
+        return clusters_assigned.squeeze(0), spectral_loss + ortho_loss + collapse_loss
 
     
 
