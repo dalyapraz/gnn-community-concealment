@@ -121,7 +121,7 @@ def generate_lfr_graph(
     mu = 0.5,
     avg_degree = 25,    # Average Degree
     max_degree_ratio = 0.1,
-    min_community = 50,  # Min Community Size
+    min_community = 10,  # Min Community Size
     num_features = 32,  # Number of features for generation
     feature_mode = 'random', # 'random' or 'gaussian'
     sigma_c = 3.0,  # Standard deviation for community feature centroids
@@ -129,6 +129,27 @@ def generate_lfr_graph(
     n_clusters_f=None,  # Number of feature clusters (None = set equal to n_communities)
     seed = 42
 ):
+    """
+    Generate a LFR benchmark graph.
+    Parameters:
+    - n: number of nodes
+    - tau1: power-law exponent for the degree distribution
+    - tau2: power-law exponent for the community size distribution
+    - mu: mixing parameter (fraction of edges that are inter-community)
+    - avg_degree: average degree of the graph
+    - max_degree_ratio: maximum degree as a fraction of n (e.g., 0.1 means max degree is 10% of n)
+    - min_community: minimum size of a community
+    - num_features: number of features per node
+    - feature_mode: 'random' or 'gaussian' for feature generation
+    - sigma_c: standard deviation for community feature centroids (for 'gaussian' mode)
+    - sigma: standard deviation for feature generation (for 'gaussian' mode)
+    - n_clusters_f: number of feature clusters (None = set equal to n_communities)
+    - seed: random seed for reproducibility
+    Returns:
+    - G: NetworkX graph object
+    - data: PyG Data object with node features
+    - true_labels: np.array of shape [n_nodes] with community labels    
+    """
     max_degree = int(max_degree_ratio * n)  # Max Degree
     max_community = int(max_degree_ratio * n)  # Max Community Size
 
