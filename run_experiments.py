@@ -22,6 +22,9 @@ from torch_geometric.utils import from_networkx
 from sklearn.metrics import normalized_mutual_info_score
 import time
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Using device: {device}")
+
 def train_model(data, true_labels, num_features=32):
     import dmon
     
@@ -97,7 +100,7 @@ def main(args):
                 for p in b_percentages:
                     bb = int(np.round(p * intra_edges))
                     for realization in range(realizations):
-                        print(f"Realization {realization+1}/{realizations} | mu={mu} sigma_c={sigma_c} label={target_label} b={bb}")
+                        # print(f"Realization {realization+1}/{realizations} | mu={mu} sigma_c={sigma_c} label={target_label} b={bb}")
                         start = time.time()
                         G_attacked = attacks.dice_community_attack(G.copy(), target_community, bb)
                         data_attacked = from_networkx(G_attacked)
@@ -110,6 +113,7 @@ def main(args):
                         results_rows.append([
                             mu, sigma_c, target_label, target_size, bb, p, realization+1, ecs, M1, M2, elapsed_time
                         ])
+                    print(f"Completed budget {p} for target label {target_label}")
         # Save results to CSV
     with open(args.outfile_csv, "w", newline="") as f:
         writer = csv.writer(f)
