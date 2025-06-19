@@ -24,9 +24,14 @@ import time
 
 def train_model(data, true_labels, num_features=32):
     import dmon
+    
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
     num_clusters = len(set(true_labels))
-    model = dmon.DMoN(in_channels=num_features, num_clusters=num_clusters, gcn_skip=True)
+    model = dmon.DMoN(in_channels=num_features, num_clusters=num_clusters, gcn_skip=True).to(device)
+    # model = dmon.DMoN(in_channels=num_features, num_clusters=num_clusters, gcn_skip=True)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.005, weight_decay=5e-4)
+    data = data.to(device)  # send features and edges to GPU
     for epoch in range(201):
         model.train()
         optimizer.zero_grad()
@@ -36,8 +41,9 @@ def train_model(data, true_labels, num_features=32):
         # if epoch % 20 == 0:
         #     print(f"Epoch {epoch:03d} | Loss: {loss.item():.4f}")
     model.eval()
+    data = data.to(device)  # ensure data is on same device for eval
     ca, _ = model(data.x, data.edge_index)
-    pred_labels = ca.argmax(dim=1).numpy()
+    pred_labels = ca.argmax(dim=1).cpu().numpy()  # bring prediction back to CPU
     return pred_labels
 
 def main(args):
