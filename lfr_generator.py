@@ -114,20 +114,20 @@ def generate_features_from_communities(
     return features
 
 
-def generate_lfr_graph(
+def generate_featurized_lfr_graph(
     n=1000,
     tau1 = 2,  # Power-law exponent for the degree distribution
     tau2 = 1.1,  # Power-law exponent for the community size distribution
     mu = 0.5,
     avg_degree = 25,    # Average Degree
     max_degree_ratio = 0.1,
-    min_community = 10,  # Min Community Size
+    min_community = 60,  # Min Community Size
     num_features = 32,  # Number of features for generation
     feature_mode = 'random', # 'random' or 'gaussian'
     sigma_c = 3.0,  # Standard deviation for community feature centroids
     sigma = 1.0,  # Standard deviation for feature generation
     n_clusters_f=None,  # Number of feature clusters (None = set equal to n_communities)
-    seed = 42
+    seed = None
 ):
     """
     Generate a LFR benchmark graph.
