@@ -8,7 +8,7 @@
 #SBATCH --mail-user=dmanato@iu.edu      # Email address to receive notifications
 #SBATCH --nodes=1                       # Number of nodes
 #SBATCH --ntasks-per-node=1             # Number of tasks per node
-#SBATCH --cpus-per-task=32
+#SBATCH --gpus-per-node=1
 #SBATCH --time=24:00:00                 # Wall clock time limit
 #SBATCH --mem=100G                      # Memory limit per node
 #SBATCH -A r01712                       # Account (project) allocation
@@ -16,6 +16,7 @@
 
 # Load any required modules
 module load cudatoolkit
+# module load pytorch/gpu
 module load python/gpu/3.11.5
 
 # Activate a virtual environment if needed
@@ -23,5 +24,11 @@ module load python/gpu/3.11.5
 # Go to the directory where the script is located
 cd gnn-clustering-attack-defense
 
-# Run your program with paramen
-srun python run_experiments.py --sigma_c_values 0.1 1 --mu_values 0.01 0.1 --b_percentages 0.1 0.3 0.5 1 --outfile_csv test_bigred200_sbatch.csv
+# Print the hostname and GPU information
+echo "Running on $(hostname)"
+nvidia-smi
+
+
+# Run your program with parameters
+# srun python test.py 
+srun python run_experiments.py --sigma_c_values 0.1 1 --mu_values 0.01 0.1 --b_percentages 0.01 0.5 1 --outfile_csv test_bigred200_sbatch.csv

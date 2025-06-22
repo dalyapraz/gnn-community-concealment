@@ -13,7 +13,7 @@ import numpy as np
 from clusim.clustering import Clustering
 from clusim.sim import element_sim # Element-centric similarity from A.J. Gates and YY Ahn
 
-def dice_community_attack(G, target_comm, b, p=0.5, seed=42):
+def dice_community_attack(G, target_comm, b, p=0.5, seed=None):
     """
     Apply DICE attack to obscure a specific community.
 
