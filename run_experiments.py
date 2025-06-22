@@ -22,8 +22,11 @@ from torch_geometric.utils import from_networkx
 from sklearn.metrics import normalized_mutual_info_score
 import time
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(f"Using device: {device}")
+
+print("torch.cuda.is_available():", torch.cuda.is_available())
+print("Device count:", torch.cuda.device_count())
+print("Device name:", torch.cuda.get_device_name(0) if torch.cuda.is_available() else "No CUDA")
+
 
 def train_model(data, true_labels, num_features=32):
     import dmon

@@ -39,7 +39,7 @@ def generate_features_from_communities(
         sigma_c=3.0,
         sigma=1.0,
         n_clusters_f=None,
-        seed=42):
+        seed=7):
     """
     Generate node features based on community structure or randomly.
 
