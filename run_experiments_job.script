@@ -9,10 +9,11 @@
 #SBATCH --nodes=1                       # Number of nodes
 #SBATCH --ntasks-per-node=1             # Number of tasks per node
 #SBATCH --gpus-per-node=1
-#SBATCH --time=24:00:00                 # Wall clock time limit
+#SBATCH --cpus-per-task=16              # Number of CPU cores per task
+#SBATCH --time=2-00:00:00                 # Wall clock time limit
 #SBATCH --mem=100G                      # Memory limit per node
 #SBATCH -A r01712                       # Account (project) allocation
-#SBATCH --array=0-2                     # Number of tasks in the array (0 to 7, 8 tasks in total)
+#SBATCH --array=0                  # Number of tasks in the array (0 to 7, 8 tasks in total)
 
 # Load any required modules
 module load cudatoolkit
@@ -31,4 +32,6 @@ nvidia-smi
 
 # Run your program with parameters
 # srun python test.py 
-srun python run_experiments.py --sigma_c_values 0.1 1 --mu_values 0.01 0.1 --b_percentages 0.01 0.5 1 --outfile_csv test_bigred200_sbatch.csv
+# srun python run_experiments.py --sigma_c_values 0.1 --mu_values 0.01 0.1 --b_percentages 0.01 0.5 1 --outfile_csv test_bigred200_sbatch.csv
+srun python run_experiments.py --mu_values 0.2 --outfile_csv full_bigred200_mu02.csv 
+# srun python run_experiments.py --mu_values 0.3 0.4 0.5  --outfile_csv full_bigred200_mu05.csv 

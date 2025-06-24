@@ -14,6 +14,7 @@ import random
 import torch
 import argparse
 import os
+import itertools
 import csv
 import networkx as nx
 from lfr_generator import generate_featurized_lfr_graph
@@ -53,6 +54,7 @@ def train_model(data, true_labels, num_features=32):
     return pred_labels
 
 def main(args):
+    
     results_dir = "results_graphs"
     os.makedirs(results_dir, exist_ok=True)
 
@@ -73,7 +75,7 @@ def main(args):
             print(f"Generating graphs with mu={mu}, sigma_c={sigma_c}")
             G, data, true_labels = generate_featurized_lfr_graph(
                 mu=mu, n=n, min_community=min_community,
-                feature_mode='gaussian', sigma_c=sigma_c, seed=args.seed)
+                feature_mode='gaussian', sigma_c=sigma_c)
             # === Save graph and membership ===
             base_name = f"graph_n{n}_mu{mu}_sigma{sigma_c}_min_comm{min_community}"
             graph_file = os.path.join(results_dir, base_name + ".edgelist")
@@ -126,13 +128,14 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run DMoN + DICE LFR graph experiments")
-    parser.add_argument("--sigma_c_values", nargs="+", type=float, default=[0.01, 0.1, 0.5, 1, 2, 5, 10])
+    parser.add_argument("--sigma_c_values", nargs="+", type=float, default=[0.01, 0.1, 0.5, 1, 2, 5])
     parser.add_argument("--mu_values", nargs="+", type=float, default=[0.01, 0.1, 0.2, 0.3, 0.4, 0.5])
-    parser.add_argument("--realizations", type=int, default=10)
+    parser.add_argument("--realizations", type=int, default=20)
     parser.add_argument("--n", type=int, default=1000)
     parser.add_argument("--min_community", type=int, default=60)
-    parser.add_argument("--seed", type=int, default=7)
+    parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--outfile_csv", type=str, default="dmon_dice_results.csv")
-    parser.add_argument("--b_percentages", nargs="+", type=float, default=[0.01, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1])
+    # parser.add_argument("--b_percentages", nargs="+", type=float, default=[0.01, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85,  0.9, 0.95, 1])
+    parser.add_argument("--b_percentages", nargs="+", type=float, default=[0.01, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5])
     args = parser.parse_args()
     main(args)
