@@ -64,6 +64,7 @@ def main(args):
     n = args.n
     b_percentages = args.b_percentages
     min_community = args.min_community
+    seed = args.seed
     results_rows = []
 
     # random.seed(args.seed)
@@ -75,7 +76,7 @@ def main(args):
             print(f"Generating graphs with mu={mu}, sigma_c={sigma_c}")
             G, data, true_labels = generate_featurized_lfr_graph(
                 mu=mu, n=n, min_community=min_community,
-                feature_mode='gaussian', sigma_c=sigma_c)
+                feature_mode='gaussian', sigma_c=sigma_c, seed=seed)
             # === Save graph and membership ===
             base_name = f"graph_n{n}_mu{mu}_sigma{sigma_c}_min_comm{min_community}"
             graph_file = os.path.join(results_dir, base_name + ".edgelist")

@@ -127,7 +127,7 @@ def generate_featurized_lfr_graph(
     sigma_c = 3.0,  # Standard deviation for community feature centroids
     sigma = 1.0,  # Standard deviation for feature generation
     n_clusters_f=None,  # Number of feature clusters (None = set equal to n_communities)
-    seed = 7
+    seed = None
 ):
     """
     Generate a LFR benchmark graph.
@@ -160,7 +160,8 @@ def generate_featurized_lfr_graph(
         max_degree=max_degree,
         min_community=min_community,
         max_community=max_community,
-        seed=seed
+        seed=seed,
+        # max_iters=2000,  # Increase max iterations for convergence
     )
 
     # Clean up multi-edges and self-loops
