@@ -131,12 +131,20 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run DMoN + DICE LFR graph experiments")
     parser.add_argument("--sigma_c_values", nargs="+", type=float, default=[0.01, 0.1, 0.5, 1, 2, 5])
     parser.add_argument("--mu_values", nargs="+", type=float, default=[0.01, 0.1, 0.2, 0.3, 0.4, 0.5])
-    parser.add_argument("--realizations", type=int, default=20)
+    parser.add_argument("--realizations", type=int, default=50)
     parser.add_argument("--n", type=int, default=1000)
     parser.add_argument("--min_community", type=int, default=60)
     parser.add_argument("--seed", type=int, default=None)
-    parser.add_argument("--outfile_csv", type=str, default="dmon_dice_results.csv")
-    # parser.add_argument("--b_percentages", nargs="+", type=float, default=[0.01, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85,  0.9, 0.95, 1])
-    parser.add_argument("--b_percentages", nargs="+", type=float, default=[0.01, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5])
+    parser.add_argument("--outfile_csv", type=str, default=None)
+    parser.add_argument("--b_percentages", nargs="+", type=float, default=[0.01, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85,  0.9, 0.95, 1])
+    # parser.add_argument("--b_percentages", nargs="+", type=float, default=[0.01, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5])
     args = parser.parse_args()
+
+        # Dynamically set outfile_csv if not provided
+    if args.outfile_csv is None:
+        # Join mu values as a string for filename
+        mu_str = "_".join(str(mu) for mu in args.mu_values)
+        args.outfile_csv = f"dmon_dice_{mu_str}_mincomm_{args.min_community}.csv"
+
+    print(f"Results will be saved to: {args.outfile_csv}")
     main(args)
