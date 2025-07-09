@@ -32,6 +32,8 @@ nvidia-smi
 
 # Run your program with parameters
 # srun python test.py 
-srun python run_experiments.py --sigma_c_values 1 --mu_values 0.01  --b_percentages 1 --min_community 50 --seed 41 --outfile_csv test_bigred200_min_community.csv
+# srun python run_experiments.py --sigma_c_values 1 --mu_values 0.01  --b_percentages 1 --min_community 50 --seed 41 --outfile_csv test_bigred200_min_community.csv
 # srun python run_experiments.py --mu_values 0.2 --outfile_csv full_bigred200_mu02.csv 
 # srun python run_experiments.py --mu_values 0.3 0.4 0.5  --outfile_csv full_bigred200_mu05.csv 
+
+srun python run_experiments.py --sigma_c_values 0.1 --mu_values 0.01 --min_community 60 --seed 10 --outfile_csv test_sigma01_mu001_min_com60.csv
