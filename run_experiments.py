@@ -90,7 +90,7 @@ def main(args):
             number_of_communities = len(set(true_labels))
             print(f"Number of communities: {number_of_communities}")
             pred_labels = train_model(data, true_labels)
-            ecs = attacks.compute_ECS(true_labels, pred_labels)
+            ecs_initial = attacks.compute_ECS(true_labels, pred_labels)
             for target_label in set(true_labels):
                 target_community = [nn for nn, label in enumerate(true_labels) if label == target_label]
                 target_size = len(target_community)
@@ -98,7 +98,7 @@ def main(args):
                 M2 = attacks.compute_M2(target_list=target_community, labels=pred_labels)
                 
                 results_rows.append([
-                                mu, sigma_c, target_label, target_size, 0, 0, 0, ecs, M1, M2, None
+                                mu, sigma_c, target_label, target_size, 0, 0, 0, ecs_initial, M1, M2, None
                             ])
                 # Budget as % of intra-community edges
                 G_target = G.subgraph(target_community)
