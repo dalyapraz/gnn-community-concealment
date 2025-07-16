@@ -20,7 +20,6 @@ import networkx as nx
 from lfr_generator import generate_featurized_lfr_graph
 import attacks
 from torch_geometric.utils import from_networkx
-from sklearn.metrics import normalized_mutual_info_score
 import time
 
 
