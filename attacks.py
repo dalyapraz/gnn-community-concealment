@@ -107,7 +107,7 @@ def dicehdcd_community_attack(G, target_comm, true_labels,b, p=0.5, seed=None):
     Modified DICE attack: Evenly distributes edge additions to target nodes.
     For each target node, assign a different non-target community and
     add new edges to nodes in that community with highest degree (globally).
-    If not enough, fill with other high-degree nodes from other communities.
+    If not enough, fill with other nodes randomly from other communities.
 
     Parameters:
         G: networkx.Graph (undirected)
@@ -177,7 +177,7 @@ def dicehdcd_community_attack(G, target_comm, true_labels,b, p=0.5, seed=None):
             G.add_edge(target_node, v)
             added += 1
         if added < n_to_add:
-            # Fill with other high-degree nodes not in assigned community, not already connected
+            # Fill with other nodes randomly not in assigned community, not already connected
             other_candidates = [
                 n for n in high_degree_nodes
                 if true_labels[n] != assigned_comm and not G.has_edge(target_node, n)
@@ -189,6 +189,95 @@ def dicehdcd_community_attack(G, target_comm, true_labels,b, p=0.5, seed=None):
                 G.add_edge(target_node, v)
                 added += 1
         # print(f"Target node {target_node}: assigned_comm={assigned_comm}, edges added={added}")
+    return G
+
+def dicecdhd_community_attack(G, target_comm, true_labels,b, p=0.5, seed=None):
+    """
+    Modified DICE attack: Evenly distributes edge additions to target nodes.
+    For each target node, assign a different non-target community and
+    add new edges to nodes in that community with highest local degree (within that community).
+    If not enough, fill with other nodes randlomly from other communities.
+
+    Parameters:
+        G: networkx.Graph (undirected)
+        target_comm: list of node IDs in target community
+        b: total modification budget (edges to remove+add)
+        true_labels: array-like/list of community labels for all nodes (index matches node id)
+        p: fraction of budget to allocate to edge removal
+        seed: random seed
+
+    Returns:
+        G_attacked: a modified networkx.Graph
+    """
+    random.seed(seed)
+    np.random.seed(seed)
+    G = G.copy()
+
+    target_set = set(target_comm)
+    print(f"Target community size: {len(target_set)}")
+    non_target_nodes = list(set(G.nodes()) - target_set)
+    nodelist = list(G.nodes())
+
+    # Find the label of the target community (assume all nodes in target_comm have the same label)
+    target_comm_label = true_labels[target_comm[0]]
+    all_communities = set(true_labels[n] for n in nodelist)
+    non_target_communities = list(all_communities - {target_comm_label})
+
+    # Step 1: Remove b*p edges from the target community
+    n_remove = np.floor(b * p).astype(int)
+    intra_edges = [(u, v) for u, v in G.edges() if u in target_set and v in target_set]
+    remove_edges = random.sample(intra_edges, min(n_remove, len(intra_edges)))
+    G.remove_edges_from(remove_edges)
+
+    # Step 2: Evenly assign edges to add among target nodes 
+    b_add = b - n_remove
+    num_targets = len(target_comm)
+    add_assignment = [0] * num_targets  # index aligned with target_comm
+    if b_add <= 0:
+        return G  # Nothing to add
+    base = b_add // num_targets
+    remainder = b_add % num_targets
+    for i in range(num_targets):
+        add_assignment[i] = base 
+    extra_edges = random.sample(range(num_targets), remainder)
+    for i in extra_edges:
+        add_assignment[i] += 1
+
+    # Step 3: Assign each target node with add_assignment > 0 to a different non-target community (cycle if needed)
+    nodes_to_add = [i for i, n_to_add in enumerate(add_assignment) if n_to_add > 0]
+    assigned_communities = [non_target_communities[j % len(non_target_communities)] for j in range(len(nodes_to_add))]
+
+    # Step 4: For each target node, add edges to high-degree (within-community) nodes in the assigned community, then others if needed
+    for k, i in enumerate(nodes_to_add):
+        target_node = target_comm[i]
+        n_to_add = add_assignment[i]
+        assigned_comm = assigned_communities[k]
+        assigned_comm_nodes = [
+            n for n in non_target_nodes
+            if true_labels[n] == assigned_comm and not G.has_edge(target_node, n)
+        ]
+        # Create a subgraph for the assigned community and find high-degree nodes locally
+        assigned_comm_G = G.subgraph(assigned_comm_nodes)
+        high_degree_nodes = sorted(assigned_comm_nodes, key=lambda x: assigned_comm_G.degree(x), reverse=True)
+        added = 0
+        for v in high_degree_nodes:
+            if added >= n_to_add:
+                break
+            G.add_edge(target_node, v)
+            added += 1
+        if added < n_to_add:
+            # Fill with other nodes randomly not in assigned community, not already connected
+            other_candidates = [
+                n for n in non_target_nodes
+                if true_labels[n] != assigned_comm and not G.has_edge(target_node, n)
+            ]
+            shuffled_candidates = random.sample(other_candidates, len(other_candidates))
+            for v in shuffled_candidates:
+                if added >= n_to_add:
+                    break
+                G.add_edge(target_node, v)
+                added += 1
+        print(f"Target node {target_node}: assigned_comm={assigned_comm}, edges added={added}")
     return G
 
 def compute_M1(target_list, labels):
