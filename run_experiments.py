@@ -107,7 +107,9 @@ def main(args):
                     for realization in range(realizations):
                         # print(f"Realization {realization+1}/{realizations} | mu={mu} sigma_c={sigma_c} label={target_label} b={bb}")
                         start = time.time()
-                        G_attacked = attacks.dice_community_attack(G.copy(), target_community, bb)
+                        # G_attacked = attacks.dice_community_attack(G.copy(), target_community, bb)
+                        G_attacked = attacks.dicehd_community_attack(G.copy(), target_community, bb)
+                        # G_attacked = attacks.dicehdcd_community_attack(G.copy(), target_community, true_labels, bb)
                         data_attacked = from_networkx(G_attacked)
                         data_attacked.x = torch.stack([G_attacked.nodes[i]['x'] for i in range(len(G_attacked))])
                         pred_labels_attacked = train_model(data_attacked, true_labels)
