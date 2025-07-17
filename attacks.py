@@ -214,7 +214,7 @@ def dicecdhd_community_attack(G, target_comm, true_labels,b, p=0.5, seed=None):
     G = G.copy()
 
     target_set = set(target_comm)
-    print(f"Target community size: {len(target_set)}")
+    # print(f"Target community size: {len(target_set)}")
     non_target_nodes = list(set(G.nodes()) - target_set)
     nodelist = list(G.nodes())
 
@@ -277,7 +277,7 @@ def dicecdhd_community_attack(G, target_comm, true_labels,b, p=0.5, seed=None):
                     break
                 G.add_edge(target_node, v)
                 added += 1
-        print(f"Target node {target_node}: assigned_comm={assigned_comm}, edges added={added}")
+        # print(f"Target node {target_node}: assigned_comm={assigned_comm}, edges added={added}")
     return G
 
 def compute_M1(target_list, labels):

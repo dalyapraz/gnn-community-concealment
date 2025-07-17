@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name=10_DICEHD        # Job name for the array
+#SBATCH --job-name=10_DICECDHD        # Job name for the array
 #SBATCH --partition=gpu             # Partition (queue) name
 #SBATCH --output=filename_%A_%a.txt      # Output file for stdout (%A: array job ID, %a: task ID)
 #SBATCH --error=filename_%A_%a.err       # Output file for stderr (%A: array job ID, %a: task ID)
@@ -84,37 +84,37 @@ nvidia-smi
 # srun python run_experiments.py --mu_values 0.5 --min_community 10 --seed 42 --sigma_c_values 1 2 5 --outfile_csv dmon_dice_0.5_mincomm_10_sigma1-5.csv  
 
 # MODIFIED DICE
-# srun python run_experiments.py --mu_values 0.01 --min_community 60 --seed 7 --realizations 10 --outfile_csv dmon_dicehd_0.01_mincomm_60.csv
-# srun python run_experiments.py --mu_values 0.1 --min_community 60 --seed 10 --realizations 10 --outfile_csv dmon_dicehd_0.1_mincomm_60.csv
-# srun python run_experiments.py --mu_values 0.2 --min_community 60 --seed 10 --realizations 10 --outfile_csv dmon_dicehd_0.2_mincomm_60.csv
-# srun python run_experiments.py --mu_values 0.3 --min_community 60 --seed 10 --realizations 10 --outfile_csv dmon_dicehd_0.3_mincomm_60.csv
-# srun python run_experiments.py --mu_values 0.4 --min_community 60 --seed 10 --realizations 10 --outfile_csv dmon_dicehd_0.4_mincomm_60.csv
-# srun python run_experiments.py --mu_values 0.5 --min_community 60 --seed 10 --realizations 10 --outfile_csv dmon_dicehd_0.5_mincomm_60.csv
+# srun python run_experiments.py --mu_values 0.01 --min_community 60 --seed 7 --realizations 10 --outfile_csv dmon_dicecdhd_0.01_mincomm_60.csv
+# srun python run_experiments.py --mu_values 0.1 --min_community 60 --seed 10 --realizations 10 --outfile_csv dmon_dicecdhd_0.1_mincomm_60.csv
+# srun python run_experiments.py --mu_values 0.2 --min_community 60 --seed 10 --realizations 10 --outfile_csv dmon_dicecdhd_0.2_mincomm_60.csv
+# srun python run_experiments.py --mu_values 0.3 --min_community 60 --seed 10 --realizations 10 --outfile_csv dmon_dicecdhd_0.3_mincomm_60.csv
+# srun python run_experiments.py --mu_values 0.4 --min_community 60 --seed 10 --realizations 10 --outfile_csv dmon_dicecdhd_0.4_mincomm_60.csv
+# srun python run_experiments.py --mu_values 0.5 --min_community 60 --seed 10 --realizations 10 --outfile_csv dmon_dicecdhd_0.5_mincomm_60.csv
 
 
-# srun python run_experiments.py --mu_values 0.01 --min_community 30 --seed 25 --sigma_c_values 0.01 0.1 0.5 --realizations 10 --outfile_csv dmon_dicehd_0.01_mincomm_30_sigma0.01-0.5.csv
-# srun python run_experiments.py --mu_values 0.01 --min_community 30 --seed 25 --sigma_c_values 1 2 5 --realizations 10 --outfile_csv dmon_dicehd_0.01_mincomm_30_sigma1-5.csv
-# srun python run_experiments.py --mu_values 0.1 --min_community 30 --seed 25 --sigma_c_values 0.01 0.1 0.5 --realizations 10 --outfile_csv dmon_dicehd_0.1_mincomm_30_sigma0.01-0.5.csv
-# srun python run_experiments.py --mu_values 0.1 --min_community 30 --seed 25 --sigma_c_values 1 2 5 --realizations 10 --outfile_csv dmon_dicehd_0.1_mincomm_30_sigma1-5.csv
-# srun python run_experiments.py --mu_values 0.2 --min_community 30 --seed 25 --sigma_c_values 0.01 0.1 0.5 --realizations 10 --outfile_csv dmon_dicehd_0.2_mincomm_30_sigma0.01-0.5.csv
-# srun python run_experiments.py --mu_values 0.2 --min_community 30 --seed 25 --sigma_c_values 1 2 5 --realizations 10 --outfile_csv dmon_dicehd_0.2_mincomm_30_sigma1-5.csv
-# srun python run_experiments.py --mu_values 0.3 --min_community 30 --seed 25 --sigma_c_values 0.01 0.1 0.5 --realizations 10 --outfile_csv dmon_dicehd_0.3_mincomm_30_sigma0.01-0.5.csv
-# srun python run_experiments.py --mu_values 0.3 --min_community 30 --seed 25 --sigma_c_values 1 2 5 --realizations 10 --outfile_csv dmon_dicehd_0.3_mincomm_30_sigma1-5.csv
-# srun python run_experiments.py --mu_values 0.4 --min_community 30 --seed 25 --sigma_c_values 0.01 0.1 0.5 --realizations 10 --outfile_csv dmon_dicehd_0.4_mincomm_30_sigma0.01-0.5.csv
-# srun python run_experiments.py --mu_values 0.4 --min_community 30 --seed 25 --sigma_c_values 1 2 5 --realizations 10 --outfile_csv dmon_dicehd_0.4_mincomm_30_sigma1-5.csv
-# srun python run_experiments.py --mu_values 0.5 --min_community 30 --seed 25 --sigma_c_values 0.01 0.1 0.5 --realizations 10 --outfile_csv dmon_dicehd_0.5_mincomm_30_sigma0.01-0.5.csv
-# srun python run_experiments.py --mu_values 0.5 --min_community 30 --seed 25 --sigma_c_values 1 2 5 --realizations 10 --outfile_csv dmon_dicehd_0.5_mincomm_30_sigma1-5.csv
+# srun python run_experiments.py --mu_values 0.01 --min_community 30 --seed 25 --sigma_c_values 0.01 0.1 0.5 --realizations 10 --outfile_csv dmon_dicecdhd_0.01_mincomm_30_sigma0.01-0.5.csv
+# srun python run_experiments.py --mu_values 0.01 --min_community 30 --seed 25 --sigma_c_values 1 2 5 --realizations 10 --outfile_csv dmon_dicecdhd_0.01_mincomm_30_sigma1-5.csv
+# srun python run_experiments.py --mu_values 0.1 --min_community 30 --seed 25 --sigma_c_values 0.01 0.1 0.5 --realizations 10 --outfile_csv dmon_dicecdhd_0.1_mincomm_30_sigma0.01-0.5.csv
+# srun python run_experiments.py --mu_values 0.1 --min_community 30 --seed 25 --sigma_c_values 1 2 5 --realizations 10 --outfile_csv dmon_dicecdhd_0.1_mincomm_30_sigma1-5.csv
+# srun python run_experiments.py --mu_values 0.2 --min_community 30 --seed 25 --sigma_c_values 0.01 0.1 0.5 --realizations 10 --outfile_csv dmon_dicecdhd_0.2_mincomm_30_sigma0.01-0.5.csv
+# srun python run_experiments.py --mu_values 0.2 --min_community 30 --seed 25 --sigma_c_values 1 2 5 --realizations 10 --outfile_csv dmon_dicecdhd_0.2_mincomm_30_sigma1-5.csv
+# srun python run_experiments.py --mu_values 0.3 --min_community 30 --seed 25 --sigma_c_values 0.01 0.1 0.5 --realizations 10 --outfile_csv dmon_dicecdhd_0.3_mincomm_30_sigma0.01-0.5.csv
+# srun python run_experiments.py --mu_values 0.3 --min_community 30 --seed 25 --sigma_c_values 1 2 5 --realizations 10 --outfile_csv dmon_dicecdhd_0.3_mincomm_30_sigma1-5.csv
+# srun python run_experiments.py --mu_values 0.4 --min_community 30 --seed 25 --sigma_c_values 0.01 0.1 0.5 --realizations 10 --outfile_csv dmon_dicecdhd_0.4_mincomm_30_sigma0.01-0.5.csv
+# srun python run_experiments.py --mu_values 0.4 --min_community 30 --seed 25 --sigma_c_values 1 2 5 --realizations 10 --outfile_csv dmon_dicecdhd_0.4_mincomm_30_sigma1-5.csv
+# srun python run_experiments.py --mu_values 0.5 --min_community 30 --seed 25 --sigma_c_values 0.01 0.1 0.5 --realizations 10 --outfile_csv dmon_dicecdhd_0.5_mincomm_30_sigma0.01-0.5.csv
+# srun python run_experiments.py --mu_values 0.5 --min_community 30 --seed 25 --sigma_c_values 1 2 5 --realizations 10 --outfile_csv dmon_dicecdhd_0.5_mincomm_30_sigma1-5.csv
 
 
-# srun python run_experiments.py --mu_values 0.01 --min_community 10 --seed 42 --sigma_c_values 0.01 0.1 0.5 --realizations 10 --outfile_csv dmon_dicehd_0.01_mincomm_10_sigma0.01-0.5.csv
-# srun python run_experiments.py --mu_values 0.01 --min_community 10 --seed 42 --sigma_c_values 1 2 5 --realizations 10 --outfile_csv dmon_dicehd_0.01_mincomm_10_sigma1-5.csv
-# srun python run_experiments.py --mu_values 0.1 --min_community 10 --seed 42 --sigma_c_values 0.01 0.1 0.5 --realizations 10 --outfile_csv dmon_dicehd_0.1_mincomm_10_sigma0.01-0.5.csv
-# srun python run_experiments.py --mu_values 0.1 --min_community 10 --seed 42 --sigma_c_values 1 2 5 --realizations 10 --outfile_csv dmon_dicehd_0.1_mincomm_10_sigma1-5.csv
-# srun python run_experiments.py --mu_values 0.2 --min_community 10 --seed 42 --sigma_c_values 0.01 0.1 0.5 --realizations 10 --outfile_csv dmon_dicehd_0.2_mincomm_10_sigma0.01-0.5.csv
-# srun python run_experiments.py --mu_values 0.2 --min_community 10 --seed 42 --sigma_c_values 1 2 5 --realizations 10 --outfile_csv dmon_dicehd_0.2_mincomm_10_sigma1-5.csv
-# srun python run_experiments.py --mu_values 0.3 --min_community 10 --seed 42 --sigma_c_values 0.01 0.1 0.5 --realizations 10 --outfile_csv dmon_dicehd_0.3_mincomm_10_sigma0.01-0.5.csv
-# srun python run_experiments.py --mu_values 0.3 --min_community 10 --seed 42 --sigma_c_values 1 2 5 --realizations 10 --outfile_csv dmon_dicehd_0.3_mincomm_10_sigma1-5.csv
-# srun python run_experiments.py --mu_values 0.4 --min_community 10 --seed 42 --sigma_c_values 0.01 0.1 0.5 --realizations 10 --outfile_csv dmon_dicehd_0.4_mincomm_10_sigma0.01-0.5.csv
-# srun python run_experiments.py --mu_values 0.4 --min_community 10 --seed 42 --sigma_c_values 1 2 5 --realizations 10 --outfile_csv dmon_dicehd_0.4_mincomm_10_sigma1-5.csv
-# srun python run_experiments.py --mu_values 0.5 --min_community 10 --seed 42 --sigma_c_values 0.01 0.1 0.5 --realizations 10 --outfile_csv dmon_dicehd_0.5_mincomm_10_sigma0.01-0.5.csv
-srun python run_experiments.py --mu_values 0.5 --min_community 10 --seed 42 --sigma_c_values 1 2 5 --realizations 10 --outfile_csv dmon_dicehd_0.5_mincomm_10_sigma1-5.csv
+# srun python run_experiments.py --mu_values 0.01 --min_community 10 --seed 42 --sigma_c_values 0.01 0.1 0.5 --realizations 10 --outfile_csv dmon_dicecdhd_0.01_mincomm_10_sigma0.01-0.5.csv
+# srun python run_experiments.py --mu_values 0.01 --min_community 10 --seed 42 --sigma_c_values 1 2 5 --realizations 10 --outfile_csv dmon_dicecdhd_0.01_mincomm_10_sigma1-5.csv
+# srun python run_experiments.py --mu_values 0.1 --min_community 10 --seed 42 --sigma_c_values 0.01 0.1 0.5 --realizations 10 --outfile_csv dmon_dicecdhd_0.1_mincomm_10_sigma0.01-0.5.csv
+# srun python run_experiments.py --mu_values 0.1 --min_community 10 --seed 42 --sigma_c_values 1 2 5 --realizations 10 --outfile_csv dmon_dicecdhd_0.1_mincomm_10_sigma1-5.csv
+# srun python run_experiments.py --mu_values 0.2 --min_community 10 --seed 42 --sigma_c_values 0.01 0.1 0.5 --realizations 10 --outfile_csv dmon_dicecdhd_0.2_mincomm_10_sigma0.01-0.5.csv
+# srun python run_experiments.py --mu_values 0.2 --min_community 10 --seed 42 --sigma_c_values 1 2 5 --realizations 10 --outfile_csv dmon_dicecdhd_0.2_mincomm_10_sigma1-5.csv
+# srun python run_experiments.py --mu_values 0.3 --min_community 10 --seed 42 --sigma_c_values 0.01 0.1 0.5 --realizations 10 --outfile_csv dmon_dicecdhd_0.3_mincomm_10_sigma0.01-0.5.csv
+# srun python run_experiments.py --mu_values 0.3 --min_community 10 --seed 42 --sigma_c_values 1 2 5 --realizations 10 --outfile_csv dmon_dicecdhd_0.3_mincomm_10_sigma1-5.csv
+# srun python run_experiments.py --mu_values 0.4 --min_community 10 --seed 42 --sigma_c_values 0.01 0.1 0.5 --realizations 10 --outfile_csv dmon_dicecdhd_0.4_mincomm_10_sigma0.01-0.5.csv
+# srun python run_experiments.py --mu_values 0.4 --min_community 10 --seed 42 --sigma_c_values 1 2 5 --realizations 10 --outfile_csv dmon_dicecdhd_0.4_mincomm_10_sigma1-5.csv
+# srun python run_experiments.py --mu_values 0.5 --min_community 10 --seed 42 --sigma_c_values 0.01 0.1 0.5 --realizations 10 --outfile_csv dmon_dicecdhd_0.5_mincomm_10_sigma0.01-0.5.csv
+srun python run_experiments.py --mu_values 0.5 --min_community 10 --seed 42 --sigma_c_values 1 2 5 --realizations 10 --outfile_csv dmon_dicecdhd_0.5_mincomm_10_sigma1-5.csv
