@@ -290,7 +290,7 @@ def dicecdhc_community_attack(G, target_comm, true_labels,b, p=0.5, seed=None):
     Parameters:
         G: networkx.Graph (undirected)
         target_comm: list of node IDs in target community
-        b: total modification budget (edges to remove+add)
+        b: total modification budget (edges to remove+add) 
         true_labels: array-like/list of community labels for all nodes (index matches node id)
         p: fraction of budget to allocate to edge removal
         seed: random seed
