@@ -36,4 +36,4 @@ nvidia-smi
 # srun python run_experiments.py --mu_values 0.2 --outfile_csv full_bigred200_mu02.csv 
 # srun python run_experiments.py --mu_values 0.3 0.4 0.5  --outfile_csv full_bigred200_mu05.csv 
 
-srun python run_experiments.py --sigma_c_values 0.1 --mu_values 0.01 --realizations 1 --min_community 60 --seed 7 --outfile_csv test_dicecdhd_sigma01_mu001_min_com60.csv
+srun python run_experiments.py --sigma_c_values 0.1 --mu_values 0.01 --realizations 1 --min_community 60 --seed 7 --outfile_csv test_dicecdhc_sigma01_mu001_min_com60.csv
