@@ -104,29 +104,31 @@ def main(args):
                 intra_edges = G_target.number_of_edges()
                 for p in b_percentages:
                     bb = int(np.round(p * intra_edges))
-                    for realization in range(realizations):
-                        # print(f"Realization {realization+1}/{realizations} | mu={mu} sigma_c={sigma_c} label={target_label} b={bb}")
-                        start = time.time()
-                        # G_attacked = attacks.dice_community_attack(G.copy(), target_community, bb)
-                        # G_attacked = attacks.dicehd_community_attack(G.copy(), target_community, bb)
-                        # G_attacked = attacks.dicehdcd_community_attack(G.copy(), target_community, true_labels, bb)
-                        # G_attacked = attacks.dicecdhd_community_attack(G.copy(), target_community, true_labels, bb)
-                        G_attacked = attacks.dicecdhc_community_attack(G.copy(), target_community, true_labels, bb)
-                        data_attacked = from_networkx(G_attacked)
-                        data_attacked.x = torch.stack([G_attacked.nodes[i]['x'] for i in range(len(G_attacked))])
-                        pred_labels_attacked = train_model(data_attacked, true_labels)
-                        ecs = attacks.compute_ECS(true_labels, pred_labels_attacked)
-                        M1 = attacks.compute_M1(target_list=target_community, labels=pred_labels_attacked)
-                        M2 = attacks.compute_M2(target_list=target_community, labels=pred_labels_attacked)
-                        elapsed_time = time.time() - start
-                        results_rows.append([
-                            mu, sigma_c, target_label, target_size, bb, p, realization+1, ecs, M1, M2, elapsed_time
-                        ])
-                    print(f"Completed budget {p} for target label {target_label}")
+                    for p_val in args.p_values:
+                        for realization in range(realizations):
+                            # print(f"Realization {realization+1}/{realizations} | mu={mu} sigma_c={sigma_c} label={target_label} b={bb}")
+                            start = time.time()
+                            # G_attacked = attacks.dice_community_attack(G.copy(), target_community, bb)
+                            G_attacked = attacks.dice_community_attack(G.copy(), target_community, bb, p=p_val)
+                            # G_attacked = attacks.dicehd_community_attack(G.copy(), target_community, bb)
+                            # G_attacked = attacks.dicehdcd_community_attack(G.copy(), target_community, true_labels, bb)
+                            # G_attacked = attacks.dicecdhd_community_attack(G.copy(), target_community, true_labels, bb)
+                            # G_attacked = attacks.dicecdhc_community_attack(G.copy(), target_community, true_labels, bb)
+                            data_attacked = from_networkx(G_attacked)
+                            data_attacked.x = torch.stack([G_attacked.nodes[i]['x'] for i in range(len(G_attacked))])
+                            pred_labels_attacked = train_model(data_attacked, true_labels)
+                            ecs = attacks.compute_ECS(true_labels, pred_labels_attacked)
+                            M1 = attacks.compute_M1(target_list=target_community, labels=pred_labels_attacked)
+                            M2 = attacks.compute_M2(target_list=target_community, labels=pred_labels_attacked)
+                            elapsed_time = time.time() - start
+                            results_rows.append([
+                                mu, sigma_c, target_label, target_size, bb, p, p_val, realization+1, ecs, M1, M2, elapsed_time
+                            ])
+                        print(f"Completed p = {p_val} and budget {p} for target label {target_label}")
         # Save results to CSV
     with open(args.outfile_csv, "w", newline="") as f:
         writer = csv.writer(f)
-        writer.writerow(["mu", "sigma_c", "target_label", "target_size", "b", 'b_percentage', "realization", "ECS", "M1", "M2", "elapsed_time_sec"])
+        writer.writerow(["mu", "sigma_c", "target_label", "target_size", "b", 'b_percentage', "p", "realization", "ECS", "M1", "M2", "elapsed_time_sec"])
         writer.writerows(results_rows)
         print(f"Results saved to {args.outfile_csv}")
 
@@ -141,13 +143,15 @@ if __name__ == "__main__":
     parser.add_argument("--outfile_csv", type=str, default=None)
     parser.add_argument("--b_percentages", nargs="+", type=float, default=[0.01, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85,  0.9, 0.95, 1])
     # parser.add_argument("--b_percentages", nargs="+", type=float, default=[0.01, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5])
+    parser.add_argument("--p_values", nargs="+", type=float, default=[0.0, 0.25, 0.5, 0.75, 1.0])
     args = parser.parse_args()
 
         # Dynamically set outfile_csv if not provided
     if args.outfile_csv is None:
         # Join mu values as a string for filename
         mu_str = "_".join(str(mu) for mu in args.mu_values)
-        args.outfile_csv = f"dmon_dice_{mu_str}_mincomm_{args.min_community}.csv"
+        p_str = "_".join(str(p) for p in args.p_values)
+        args.outfile_csv = f"dmon_dice_{mu_str}_p_{p_str}_mincomm_{args.min_community}.csv"
 
     print(f"Results will be saved to: {args.outfile_csv}")
     main(args)

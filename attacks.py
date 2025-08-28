@@ -33,10 +33,10 @@ def dice_community_attack(G, target_comm, b, p=0.5, seed=None):
 
     # Step 1: Remove b*p edges from the target community
     n_remove = np.floor(b * p).astype(int)
-    intra_edges = [(u, v) for u, v in G.edges() if u in target_set and v in target_set]
-    remove_edges = random.sample(intra_edges, min(n_remove, len(intra_edges)))
-    G.remove_edges_from(remove_edges)
-
+    if n_remove > 0:
+        intra_edges = [(u, v) for u, v in G.edges() if u in target_set and v in target_set]
+        remove_edges = random.sample(intra_edges, min(n_remove, len(intra_edges)))
+        G.remove_edges_from(remove_edges)
     # Step 2: Add b - n_remove inter-community edges
     add_edges = set()
     while len(add_edges) < (b - n_remove) and len(non_target_nodes) > 0:
