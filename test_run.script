@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name=LFR_DMoN_DICE        # Job name for the array
+#SBATCH --job-name=TEST_DICE        # Job name for the array
 #SBATCH --partition=gpu-debug             # Partition (queue) name
 #SBATCH --output=filename_%A_%a.txt      # Output file for stdout (%A: array job ID, %a: task ID)
 #SBATCH --error=filename_%A_%a.err       # Output file for stderr (%A: array job ID, %a: task ID)
@@ -36,4 +36,4 @@ nvidia-smi
 # srun python run_experiments.py --mu_values 0.2 --outfile_csv full_bigred200_mu02.csv 
 # srun python run_experiments.py --mu_values 0.3 0.4 0.5  --outfile_csv full_bigred200_mu05.csv 
 
-srun python run_experiments.py --sigma_c_values 0.1 --mu_values 0.01 --realizations 1 --min_community 60 --seed 7 --outfile_csv test_dicecdhc_sigma01_mu001_min_com60.csv
+srun python run_experiments.py --sigma_c_values 0.1 --mu_values 0.01 --b_percentages 0.01 0.1 0.2 0.5 0.8 0.9 1 --p_values 0 0.25 0.5 0.75 1 --realizations 2 --min_community 60 --seed 7 --outfile_csv test_dice_p_sigma01_mu001_min_com60.csv
