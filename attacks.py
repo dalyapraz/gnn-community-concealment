@@ -9,7 +9,9 @@ import random
 import networkx as nx
 import numpy as np
 from clusim.clustering import Clustering
-from clusim.sim import element_sim # Element-centric similarity from A.J. Gates and YY Ahn
+from clusim.sim import element_sim # Element-centric similarity between communities from A.J. Gates and YY Ahn
+from scipy.spatial.distance import cdist
+from sklearn.metrics.pairwise import cosine_similarity
 
 def dice_community_attack(G, target_comm, b, p=0.5, seed=None):
     """
@@ -24,8 +26,8 @@ def dice_community_attack(G, target_comm, b, p=0.5, seed=None):
     Returns:
     - G_attacked: a modified networkx.Graph with edges perturbed
     """
-    random.seed(seed)
-    np.random.seed(seed)
+    # random.seed(seed)
+    # np.random.seed(seed)
     G = G.copy()
 
     target_set = set(target_comm)
@@ -47,6 +49,93 @@ def dice_community_attack(G, target_comm, b, p=0.5, seed=None):
             add_edges.add((u, v))
     G.add_edges_from(add_edges)
     return G
+
+
+def dice_cfeature_node_attack(
+    G, target_comm, true_labels, b, p=0.5, seed=None,
+    similarity='euclidean',
+    feature_mode=False  # options: False, 'connecting_node', 'average_community'
+):
+    """
+    Modified DICE attack:
+    - Removes intra-community edges
+    - Adds edges between nodes with similar features
+    - Optionally modifies features of target node u based on connection to new node v or v's community average
+
+    Parameters:
+    - G: networkx.Graph
+    - target_comm: list of node IDs in target community
+    - true_labels: array-like/list of community labels for all nodes (index matches node id)
+    - b: total budget of edge modifications
+    - p: fraction of budget for edge removal
+    - seed: random seed
+    - similarity: 'cosine' or 'euclidean'
+    - feature_mode: 
+        - False: no change to features
+        - 'connecting_node': u adopts features of connected v
+        - 'average_community': u adopts average of v's community
+    
+    Returns:
+    - G_attacked: modified graph
+    """
+    # random.seed(seed) 
+    # np.random.seed(seed)
+    G = G.copy()
+
+    target_set = set(target_comm)
+    non_target_nodes = list(set(G.nodes()) - target_set)
+
+    # Extract feature matrix
+    features = np.stack([
+        G.nodes[i]['x'].numpy() if hasattr(G.nodes[i]['x'], 'numpy') else G.nodes[i]['x']
+        for i in G.nodes()
+    ], axis=0)
+
+    # Step 1: Remove intra-community edges
+    n_remove = int(np.floor(b * p))
+    intra_edges = [(u, v) for u, v in G.edges() if u in target_set and v in target_set]
+    if n_remove > 0 and len(intra_edges) > 0:
+        remove_edges = random.sample(intra_edges, min(n_remove, len(intra_edges)))
+        G.remove_edges_from(remove_edges)
+
+    # Step 2: Add inter-community edges based on feature similarity
+    n_add = b - n_remove
+    add_edges = set()
+
+    # Compute similarity matrix
+    if similarity == 'cosine':
+        sim_matrix = cosine_similarity(features)
+    elif similarity == 'euclidean':
+        sim_matrix = -cdist(features, features, metric='euclidean')  # negate for max()
+    else:
+        raise ValueError("similarity must be 'cosine' or 'euclidean'")
+
+    while len(add_edges) < n_add:
+        u = random.choice(target_comm)
+        candidates = [
+            (v, sim_matrix[u][v]) for v in non_target_nodes
+            if not G.has_edge(u, v) and u != v
+        ]
+        if not candidates:
+            break
+        v = max(candidates, key=lambda x: x[1])[0]
+        add_edges.add((u, v))
+
+        # === Feature mode manipulation ===
+        if feature_mode == 'connecting_node':
+            G.nodes[u]['x'] = G.nodes[v]['x']
+        elif feature_mode == 'average_community':
+            comm_label = true_labels[v]
+            connecting_comm = [n for n in target_comm if true_labels[n] == comm_label]
+            comm_feats = [
+                G.nodes[n]['x'].numpy() if hasattr(G.nodes[n]['x'], 'numpy') else G.nodes[n]['x']
+                for n in connecting_comm
+            ]
+            G.nodes[u]['x'] = np.mean(comm_feats, axis=0)
+
+    G.add_edges_from(add_edges)
+    return G
+
 
 def dicehd_community_attack(G, target_comm, b, p=0.5, seed=None):
     """
