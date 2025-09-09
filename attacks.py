@@ -8,6 +8,7 @@ Author: Dalya Manatova
 import random
 import networkx as nx
 import numpy as np
+import torch
 from clusim.clustering import Clustering
 from clusim.sim import element_sim # Element-centric similarity between communities from A.J. Gates and YY Ahn
 from scipy.spatial.distance import cdist
@@ -52,44 +53,43 @@ def dice_community_attack(G, target_comm, b, p=0.5, seed=None):
 
 
 def dice_cfeature_node_attack(
-    G, target_comm, true_labels, b, p=0.5, seed=None,
-    similarity='euclidean',
-    feature_mode=False  # options: False, 'connecting_node', 'average_community'
+    G, target_comm, true_labels, S, b, p=0.5, *, nodes=None, idx_of = None, seed=None,
+    feature_mode = None  # options: None, 'connecting_node', 'average_community'
 ):
     """
     Modified DICE attack:
     - Removes intra-community edges
-    - Adds edges between nodes with similar features
+    - Adds edges between nodes with similar features. Uses a fixed NEG-sq-Euclidean similarity matrix S (N×N)
     - Optionally modifies features of target node u based on connection to new node v or v's community average
 
     Parameters:
     - G: networkx.Graph
     - target_comm: list of node IDs in target community
     - true_labels: array-like/list of community labels for all nodes (index matches node id)
+    - S: torch.Tensor (N×N) similarity matrix (NEG-sq-Euclidean or cosine)
     - b: total budget of edge modifications
     - p: fraction of budget for edge removal
     - seed: random seed
     - similarity: 'cosine' or 'euclidean'
     - feature_mode: 
-        - False: no change to features
+        - None: no change to features
         - 'connecting_node': u adopts features of connected v
         - 'average_community': u adopts average of v's community
     
     Returns:
     - G_attacked: modified graph
     """
-    # random.seed(seed) 
-    # np.random.seed(seed)
+    if seed is not None:
+        random.seed(seed) 
+        np.random.seed(seed)
     G = G.copy()
-
+    if nodes is None:
+        nodes = list(G.nodes())
+    if idx_of is None:
+        idx_of = {n: n for n in nodes}
     target_set = set(target_comm)
-    non_target_nodes = list(set(G.nodes()) - target_set)
-
-    # Extract feature matrix
-    features = np.stack([
-        G.nodes[i]['x'].numpy() if hasattr(G.nodes[i]['x'], 'numpy') else G.nodes[i]['x']
-        for i in G.nodes()
-    ], axis=0)
+    N = len(nodes)
+    device = S.device # assume S is a torch tensor on the right device
 
     # Step 1: Remove intra-community edges
     n_remove = int(np.floor(b * p))
@@ -100,41 +100,85 @@ def dice_cfeature_node_attack(
 
     # Step 2: Add inter-community edges based on feature similarity
     n_add = b - n_remove
-    add_edges = set()
-
-    # Compute similarity matrix
-    if similarity == 'cosine':
-        sim_matrix = cosine_similarity(features)
-    elif similarity == 'euclidean':
-        sim_matrix = -cdist(features, features, metric='euclidean')  # negate for max()
-    else:
-        raise ValueError("similarity must be 'cosine' or 'euclidean'")
-
-    while len(add_edges) < n_add:
+    if n_add == 0:  # if nothing to add, return early
+        return G
+    
+    # Build per-node neighbor index tensors 
+    neigh_idx = [None] * N
+    for n in nodes:
+        i = idx_of[n]
+        neighs = [idx_of[w] for w in G.neighbors(n)]
+        if len(neighs) == 0:
+            neigh_idx[i] = torch.empty(0, dtype=torch.long, device=device)
+        else:
+            neigh_idx[i] = torch.as_tensor(neighs, dtype=torch.long, device=device)
+    # Build target community index tensor
+    tgt_idx_tensor = (
+        torch.as_tensor([idx_of[n] for n in target_comm], dtype=torch.long, device=device)
+        if target_comm else None)
+    
+    # precompute means for average_community
+    if feature_mode == 'average_community':
+        # map label -> list of node ids in that label
+        comm_nodes = {}
+        for n in nodes:
+            c = int(true_labels[n])
+            comm_nodes.setdefault(c, []).append(n)
+        # map label -> mean feature vector (torch tensor)
+        comm_mean = {}
+        for c, nlst in comm_nodes.items():
+            print(f"Computing mean features for community {c} of size {len(comm_nodes[c])}")
+            # stack each node's torch feature; keep dtype/device of first tensor
+            tmpl = G.nodes[nlst[0]]['x']
+            feats = [G.nodes[n]['x'].to(dtype=tmpl.dtype, device=tmpl.device) for n in nlst]
+            comm_mean[c] = torch.stack(feats, dim=0).mean(dim=0)  # (D,)
+            
+    added = 0
+    while added < n_add:
         u = random.choice(target_comm)
-        candidates = [
-            (v, sim_matrix[u][v]) for v in non_target_nodes
-            if not G.has_edge(u, v) and u != v
-        ]
-        if not candidates:
-            break
-        v = max(candidates, key=lambda x: x[1])[0]
-        add_edges.add((u, v))
+        ui = idx_of[u]
 
-        # === Feature mode manipulation ===
-        if feature_mode == 'connecting_node':
-            G.nodes[u]['x'] = G.nodes[v]['x']
-        elif feature_mode == 'average_community':
-            comm_label = true_labels[v]
-            connecting_comm = [n for n in target_comm if true_labels[n] == comm_label]
-            comm_feats = [
-                G.nodes[n]['x'].numpy() if hasattr(G.nodes[n]['x'], 'numpy') else G.nodes[n]['x']
-                for n in connecting_comm
-            ]
-            G.nodes[u]['x'] = np.mean(comm_feats, axis=0)
+        row = S[ui].clone()  # (N,)
+        # mask neighbors
+        nb = neigh_idx[ui]
+        if nb.numel() > 0:
+            row.index_fill_(0, nb, -float('inf'))
+        # mask same-community nodes
+        if tgt_idx_tensor is not None and tgt_idx_tensor.numel() > 0:
+            row.index_fill_(0, tgt_idx_tensor, -float('inf'))
 
-    G.add_edges_from(add_edges)
+        # pick best v
+        best_vi = int(torch.argmax(row).item())
+        if not np.isfinite(row[best_vi].item()):
+            continue # try another u
+        v = nodes[best_vi]
+        if not G.has_edge(u, v):
+            G.add_edge(u, v)
+            added += 1
+            # update neighbor lists for masks
+            vi = idx_of[v]
+            neigh_idx[ui] = torch.cat([neigh_idx[ui], torch.tensor([vi], device=device, dtype=torch.long)]) \
+                            if neigh_idx[ui].numel() else torch.tensor([vi], device=device, dtype=torch.long)
+            neigh_idx[vi] = torch.cat([neigh_idx[vi], torch.tensor([ui], device=device, dtype=torch.long)]) \
+                            if neigh_idx[vi].numel() else torch.tensor([ui], device=device, dtype=torch.long)
+
+            # === Feature mode manipulation ===
+            # If feature_mode, modify u's features based on v or v's community
+            if feature_mode == "connecting_node":
+                v_features = G.nodes[v]['x']                                   # torch.Tensor
+                u_features = G.nodes[u]['x']                                  # torch.Tensor
+                G.nodes[u]['x'] = v_features.to(dtype=u_features.dtype, device=u_features.device).clone()
+                # print(f"Node {u} features changed to match connected node {v}")
+            elif feature_mode == 'average_community':
+                c = int(true_labels[v])
+                u_features = G.nodes[u]['x']
+                avg = comm_mean[c].to(dtype=u_features.dtype, device=u_features.device)
+                G.nodes[u]['x'] = avg.clone()                           # torch.Tensor
+    #             print(f"Node {u} features changed to average of community {c} (connected node {v})")
+    # print(f"Added {added} edges to target community of size {len(target_comm)}")
     return G
+
+
 
 
 def dicehd_community_attack(G, target_comm, b, p=0.5, seed=None):

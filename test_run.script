@@ -15,19 +15,55 @@
 #SBATCH -A r01712                       # Account (project) allocation
 #SBATCH --array=0                  # Number of tasks in the array (0 to 7, 8 tasks in total)
 
-# Load any required modules
-module load cudatoolkit
-# module load pytorch/gpu
+
+
+set -euo pipefail
+set -x   # trace commands
+
+mkdir -p logs
+
+# Make Python chatty & unbuffered
+export PYTHONUNBUFFERED=1
+export PYTHONFAULTHANDLER=1
+export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK}
+export MKL_NUM_THREADS=${SLURM_CPUS_PER_TASK}
+export OPENBLAS_NUM_THREADS=${SLURM_CPUS_PER_TASK}
+export CUDA_LAUNCH_BLOCKING=1
+
+module purge
 module load python/gpu/3.11.5
+module load cudatoolkit/11.8
 
-# Activate a virtual environment if needed
+echo "[SLURM] JobID: $SLURM_JOB_ID  Node: $(hostname)"
+echo "[SLURM] NodeList: ${SLURM_NODELIST-}  SubmitDir: ${SLURM_SUBMIT_DIR-}"
 
-# Go to the directory where the script is located
-cd gnn-clustering-attack-defense
+# Preflight GPU
+python - <<'PY' || { echo "Preflight CUDA test failed"; exit 1; }
+import os, torch
+print("torch.__version__ =", torch.__version__)
+print("torch.version.cuda =", torch.version.cuda)
+print("is_available =", torch.cuda.is_available())
+print("device_count =", torch.cuda.device_count())
+print("CUDA_VISIBLE_DEVICES =", os.environ.get("CUDA_VISIBLE_DEVICES"))
+if not torch.cuda.is_available(): raise SystemExit("No CUDA device visible to PyTorch.")
+x = torch.randn(2,2, device='cuda'); print("CUDA tensor OK:", x.shape)
+PY
 
-# Print the hostname and GPU information
-echo "Running on $(hostname)"
-nvidia-smi
+# Go to your project
+cd "$SLURM_SUBMIT_DIR/gnn-clustering-attack-defense"
+# pwd; ls -al
+
+# (Optional) prove imports won’t crash before your prints:
+python - <<'PY'
+import sys
+print("Import smoke test start", flush=True)
+import attacks, dmon, torch_geometric
+print("Imports OK", flush=True)
+PY
+
+echo "[SLURM] Launching run_experiments.py at $(date)"
+
+
 
 
 # Run your program with parameters
@@ -36,4 +72,17 @@ nvidia-smi
 # srun python run_experiments.py --mu_values 0.2 --outfile_csv full_bigred200_mu02.csv 
 # srun python run_experiments.py --mu_values 0.3 0.4 0.5  --outfile_csv full_bigred200_mu05.csv 
 
-srun python run_experiments.py --sigma_c_values 0.1 --mu_values 0.01 --b_percentages 0.01 0.1 0.2 0.5 0.8 0.9 1 --p_values 0 0.25 0.5 0.75 1 --realizations 2 --min_community 60 --seed 7 --outfile_csv test_dice_p_sigma01_mu001_min_com60.csv
+# srun python run_experiments.py --sigma_c_values 0.1 --mu_values 0.01 --b_percentages 0.01 0.1 0.2 0.5 0.8 0.9 1 --p_values 0 0.25 0.5 0.75 1 --realizations 2 --min_community 60 --seed 7 --outfile_csv test_dice_p_sigma01_mu001_min_com60.csv
+
+# srun python run_experiments.py --sigma_c_values 0.1 --mu_values 0.01 --b_percentages 0.01 0.1  --p_values 0.5 --realizations 1 --min_community 60 --seed 7 --attack_feature_mode connecting_node --outfile_csv test_dicecfeaturenode_con_sigma01_mu001_min_com60.csv
+
+srun --unbuffered --label python -u run_experiments.py \
+  --sigma_c_values 0.1 --mu_values 0.01 \
+  --b_percentages 0.01 0.1 \
+  --p_values 0.5 --realizations 1 \
+  --min_community 60 --seed 7 \
+  --attack_feature_mode average_community \
+  --outfile_csv test_dicecfeaturenode_con_sigma01_mu001_min_com60.csv
+status=$?
+echo "[SLURM] run_experiments.py exit code = $status"
+exit $status
