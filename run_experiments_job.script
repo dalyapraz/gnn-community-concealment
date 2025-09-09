@@ -23,25 +23,14 @@ set -euo pipefail
 # Load any required modules
 # module load cudatoolkit
 # module load pytorch/gpu
+module purge
 module load python/gpu/3.11.5
 module load cudatoolkit/11.8
 
-# Activate a virtual environment if needed
+echo "[SLURM] JobID: $SLURM_JOB_ID  Node: $(hostname)"
+echo "[SLURM] NodeList: ${SLURM_NODELIST-}  SubmitDir: ${SLURM_SUBMIT_DIR-}"
 
-# Go to the directory where the script is located
-# cd gnn-clustering-attack-defense
-
-# Print the hostname and GPU information
-echo "Running on $(hostname)"
-# nvidia-smi
-
-echo "JobID: $SLURM_JOB_ID  Host: $(hostname)"
-echo "SLURM_JOB_GPUS: ${SLURM_JOB_GPUS-}"
-echo "CUDA_VISIBLE_DEVICES: ${CUDA_VISIBLE_DEVICES-}"
-nvidia-smi || true
-nvidia-smi -L || true
-
-# 3) Sanity check CUDA/PyTorch before running the model
+# Preflight GPU
 python - <<'PY' || { echo "Preflight CUDA test failed"; exit 1; }
 import os, torch
 print("torch.__version__ =", torch.__version__)
@@ -49,17 +38,24 @@ print("torch.version.cuda =", torch.version.cuda)
 print("is_available =", torch.cuda.is_available())
 print("device_count =", torch.cuda.device_count())
 print("CUDA_VISIBLE_DEVICES =", os.environ.get("CUDA_VISIBLE_DEVICES"))
-if not torch.cuda.is_available():
-    raise SystemExit("No CUDA device visible to PyTorch.")
-x = torch.randn(2,2, device='cuda')
-print("CUDA tensor OK:", x.shape)
+if not torch.cuda.is_available(): raise SystemExit("No CUDA device visible to PyTorch.")
+x = torch.randn(2,2, device='cuda'); print("CUDA tensor OK:", x.shape)
 PY
 
-# 4) Enter your project dir (portable)
-cd "$SLURM_SUBMIT_DIR"/gnn-clustering-attack-defense
+# Go to your project
+cd "$SLURM_SUBMIT_DIR/gnn-clustering-attack-defense"
+# pwd; ls -al
 
-# 5) Run with srun so GPU binding/cgroups propagate; enable sync error reporting
-export CUDA_LAUNCH_BLOCKING=1
+# (Optional) prove imports won’t crash before your prints:
+python - <<'PY'
+import sys
+print("Import smoke test start", flush=True)
+import attacks, dmon, torch_geometric
+print("Imports OK", flush=True)
+PY
+
+echo "[SLURM] Launching run_experiments.py at $(date)"
+
 
 # Run your program with parameters
 # srun python test.py 
@@ -471,4 +467,5 @@ export CUDA_LAUNCH_BLOCKING=1
 # srun python run_experiments.py --mu_values 0.4 --min_community 10 --seed 42 --sigma_c_values 2 --p_values 1 --outfile_csv dmon_dice_0.4_mincomm_10_sigma2_p1.csv
 
 # srun python run_experiments.py --mu_values 0.5 --min_community 10 --seed 42 --sigma_c_values 2 --p_values 0 --outfile_csv dmon_dice_0.5_mincomm_10_sigma2_p0.csv
-srun python run_experiments.py --mu_values 0.5 --min_community 10 --seed 42 --sigma_c_values 2 --p_values 0.25 --outfile_csv dmon_dice_0.5_mincomm_10_sigma2_p0.25.csv
+# srun python run_experiments.py --mu_values 0.5 --min_community 10 --seed 42 --sigma_c_values 2 --p_values 0.25 --outfile_csv dmon_dice_0.5_mincomm_10_sigma2_p0.25.csv
+

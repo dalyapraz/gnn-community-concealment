@@ -218,3 +218,41 @@ def visualize_lfr_graph(G, com_labels, layout_seed=42, figsize=(10, 10), title=N
     plt.title(title or f"LFR Graph: {G.number_of_nodes()} nodes, {len(unique_coms)} communities")
     plt.axis('off')
     plt.show()
+
+
+
+@torch.inference_mode()
+def precompute_allpairs_neg_sqeuclidean(G, feature_key='x', device=None, dtype=torch.float32):
+    """
+    Returns:
+      nodes : list of node ids in a fixed order
+      idx_of: dict mapping node_id -> row/col index
+      F     : (N,D) feature tensor on `device`
+      S     : (N,N) NEG squared Euclidean similarity (bigger = closer), diag = -inf
+    """
+    device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+    nodes  = list(G.nodes())
+    idx_of = {n: i for i, n in enumerate(nodes)}
+
+    feats = []
+    for n in nodes:
+        x = G.nodes[n][feature_key]                 # grab this node's feature vector
+        if isinstance(x, torch.Tensor):             # if it's a torch tensor,
+            x = x.detach().cpu().numpy()            # detach and move to CPU NumPy
+        feats.append(np.asarray(x, dtype=np.float32))
+
+    # stack to (N,D) and move to the chosen device (CPU or GPU)
+    F = torch.as_tensor(np.stack(feats), dtype=dtype, device=device).contiguous()
+
+    # ||x_i||^2 for every node i, shape (N,1)
+    X2 = (F * F).sum(dim=1, keepdim=True)
+
+    # pairwise negative squared distances:
+    #   -||x_i - x_j||^2 = -(||x_i||^2 + ||x_j||^2 - 2 * x_i·x_j)
+    S = (X2 + X2.T - 2.0 * (F @ F.T)).clamp_min_(0).neg_()
+
+    # avodid self-loops in similarity graph
+    S.fill_diagonal_(-float('inf'))
+
+    return nodes, idx_of, F, S
+

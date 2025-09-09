@@ -17,7 +17,7 @@ import os
 import itertools
 import csv
 import networkx as nx
-from lfr_generator import generate_featurized_lfr_graph
+from lfr_generator import generate_featurized_lfr_graph, precompute_allpairs_neg_sqeuclidean
 import attacks
 from torch_geometric.utils import from_networkx
 import time
@@ -76,6 +76,8 @@ def main(args):
             G, data, true_labels = generate_featurized_lfr_graph(
                 mu=mu, n=n, min_community=min_community,
                 feature_mode='gaussian', sigma_c=sigma_c, seed=seed)
+            # Precompute pairwise similarities for feature-based attacks
+            _, _, _, S = precompute_allpairs_neg_sqeuclidean(G)
             # === Save graph and membership ===
             base_name = f"graph_n{n}_mu{mu}_sigma{sigma_c}_min_comm{min_community}"
             graph_file = os.path.join(results_dir, base_name + ".edgelist")
@@ -109,11 +111,12 @@ def main(args):
                             # print(f"Realization {realization+1}/{realizations} | mu={mu} sigma_c={sigma_c} label={target_label} b={bb}")
                             start = time.time()
                             # G_attacked = attacks.dice_community_attack(G.copy(), target_community, bb)
-                            G_attacked = attacks.dice_community_attack(G.copy(), target_community, bb, p=p_val)
+                            # G_attacked = attacks.dice_community_attack(G.copy(), target_community, bb, p=p_val)
                             # G_attacked = attacks.dicehd_community_attack(G.copy(), target_community, bb)
                             # G_attacked = attacks.dicehdcd_community_attack(G.copy(), target_community, true_labels, bb)
                             # G_attacked = attacks.dicecdhd_community_attack(G.copy(), target_community, true_labels, bb)
                             # G_attacked = attacks.dicecdhc_community_attack(G.copy(), target_community, true_labels, bb)
+                            G_attacked = attacks.dice_cfeature_node_attack(G.copy(), target_community, true_labels, S,  bb, p=p_val, feature_mode= args.attack_feature_mode)
                             data_attacked = from_networkx(G_attacked)
                             data_attacked.x = torch.stack([G_attacked.nodes[i]['x'] for i in range(len(G_attacked))])
                             pred_labels_attacked = train_model(data_attacked, true_labels)
@@ -144,14 +147,17 @@ if __name__ == "__main__":
     parser.add_argument("--b_percentages", nargs="+", type=float, default=[0.01, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85,  0.9, 0.95, 1])
     # parser.add_argument("--b_percentages", nargs="+", type=float, default=[0.01, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5])
     parser.add_argument("--p_values", nargs="+", type=float, default=[0.0, 0.25, 0.5, 0.75, 1.0])
+    parser.add_argument("--attack_feature_mode", type=str, default=None, choices=[None, "connecting_node", "average_community"])
+
     args = parser.parse_args()
 
         # Dynamically set outfile_csv if not provided
     if args.outfile_csv is None:
         # Join mu values as a string for filename
         mu_str = "_".join(str(mu) for mu in args.mu_values)
+        sigma_str = "_".join(str(sigma) for sigma in args.sigma_c_values)
         p_str = "_".join(str(p) for p in args.p_values)
-        args.outfile_csv = f"dmon_dice_{mu_str}_p_{p_str}_mincomm_{args.min_community}.csv"
+        args.outfile_csv = f"dmon_dice_{mu_str}_sigma{sigma_str}_p_{p_str}_mincomm_{args.min_community}.csv"
 
     print(f"Results will be saved to: {args.outfile_csv}")
     main(args)
