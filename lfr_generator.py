@@ -254,5 +254,66 @@ def precompute_allpairs_neg_sqeuclidean(G, feature_key='x', device=None, dtype=t
     # avodid self-loops in similarity graph
     S.fill_diagonal_(-float('inf'))
 
-    return nodes, idx_of, F, S
+    return F, S
+
+
+
+@torch.inference_mode()
+def precompute_node_comm_neg_sqeuclidean(G, true_labels, feature_key='x', device=None, dtype=torch.float32):
+    """
+    Precompute NEG squared Euclidean similarity between every node and every community centroid.
+    Parameters:
+        G : networkx.Graph Graph with node features in G.nodes[n][feature_key] (torch.Tensor or array).
+        true_labels : array-like of shape [N] Community label for each node, index aligned with node id.
+    Returns:
+      nodes : list of node ids in a fixed order
+      idx_of: dict mapping node_id -> row/col index
+      F     : (N,D) feature tensor on `device`
+      S     : (N,N) NEG squared Euclidean similarity (bigger = closer), diag = -inf
+      centroids  : (K,D) centroid tensor on device
+      S_nc        : (N,K) NEG squared Euclidean similarity (larger = closer)
+      comm_ids    : list of community ids
+      id2idx      : dict mapping community id -> centroid index
+      comm_members: list of lists of node indices per community
+    """
+    device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+    nodes  = list(G.nodes())
+    idx_of = {n: i for i, n in enumerate(nodes)}
+
+    feats = []
+    for n in nodes:
+        x = G.nodes[n][feature_key]                 # grab this node's feature vector
+        if isinstance(x, torch.Tensor):             # if it's a torch tensor,
+            x = x.detach().cpu().numpy()            # detach and move to CPU NumPy
+        feats.append(np.asarray(x, dtype=np.float32))
+
+    # stack to (N,D) and move to the chosen device (CPU or GPU)
+    F = torch.as_tensor(np.stack(feats), dtype=dtype, device=device).contiguous()
+
+    # --- Community centroids ---
+    true_labels = np.asarray(true_labels)
+    comm_ids = sorted(set(true_labels))
+    com_id2idx = {cid: i for i, cid in enumerate(comm_ids)}
+    K = len(comm_ids)
+
+    com_idx_members = [[] for _ in range(K)]
+    for i, c in enumerate(true_labels):
+        com_idx_members[com_id2idx[int(c)]].append(i)
+
+    D = F.shape[1]
+    centroids = torch.empty((K, D), dtype=F.dtype, device=F.device)
+    for k, idxs in enumerate(com_idx_members):
+        idx = torch.as_tensor(idxs, dtype=torch.long, device=F.device)
+        centroids[k] = F.index_select(0, idx).mean(dim=0)
+
+    # --- Node–community similarities ---
+    # ||x_i||^2 for every node i, shape (N,1)
+    X2 = (F * F).sum(dim=1, keepdim=True)
+    # ||c_k||^2 for every centroid k, shape (K,1)
+    C2 = (centroids*centroids).sum(dim=1).unsqueeze(0)
+    X_dot_C = F @ centroids.T                # (N,K)
+    S_nc = (X2 + C2 - 2.0*X_dot_C).clamp_min_(0).neg_()  # NEG squared Euclidean
+
+
+    return F, S_nc
 
