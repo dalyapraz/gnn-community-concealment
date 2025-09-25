@@ -81,8 +81,7 @@ srun --unbuffered --label python -u run_experiments.py \
   --b_percentages 0.01 0.1 \
   --p_values 0.5 --realizations 1 \
   --min_community 60 --seed 7 \
-  --attack_feature_mode average_community \
-  --outfile_csv test_dicecfeaturenode_con_sigma01_mu001_min_com60.csv
+  --outfile_csv test_dice_sigma01_mu001_min_com60.csv
 status=$?
 echo "[SLURM] run_experiments.py exit code = $status"
 exit $status

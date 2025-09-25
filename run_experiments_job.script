@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name=p_10_sig2       # Job name for the array
+#SBATCH --job-name=dice10-mu05       # Job name for the array
 #SBATCH --partition=gpu             # Partition (queue) name
 #SBATCH --output=filename_%A_%a.txt      # Output file for stdout (%A: array job ID, %a: task ID)
 #SBATCH --error=filename_%A_%a.err       # Output file for stderr (%A: array job ID, %a: task ID)
@@ -15,14 +15,20 @@
 #SBATCH -A r01712                       # Account (project) allocation
 #SBATCH --array=0                  # Number of tasks in the array (0 to 7, 8 tasks in total)
 
-# If a specific node is flaky, avoid it:
-# #SBATCH --exclude=nid0680
 
 set -euo pipefail
+set -x   # trace commands
 
-# Load any required modules
-# module load cudatoolkit
-# module load pytorch/gpu
+mkdir -p logs
+
+# Make Python chatty & unbuffered
+export PYTHONUNBUFFERED=1
+export PYTHONFAULTHANDLER=1
+export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK}
+export MKL_NUM_THREADS=${SLURM_CPUS_PER_TASK}
+export OPENBLAS_NUM_THREADS=${SLURM_CPUS_PER_TASK}
+export CUDA_LAUNCH_BLOCKING=1
+
 module purge
 module load python/gpu/3.11.5
 module load cudatoolkit/11.8
@@ -44,6 +50,7 @@ PY
 
 # Go to your project
 cd "$SLURM_SUBMIT_DIR/gnn-clustering-attack-defense"
+mkdir -p results_dice
 # pwd; ls -al
 
 # (Optional) prove imports won’t crash before your prints:
@@ -55,6 +62,7 @@ print("Imports OK", flush=True)
 PY
 
 echo "[SLURM] Launching run_experiments.py at $(date)"
+
 
 
 # Run your program with parameters
@@ -469,3 +477,24 @@ echo "[SLURM] Launching run_experiments.py at $(date)"
 # srun python run_experiments.py --mu_values 0.5 --min_community 10 --seed 42 --sigma_c_values 2 --p_values 0 --outfile_csv dmon_dice_0.5_mincomm_10_sigma2_p0.csv
 # srun python run_experiments.py --mu_values 0.5 --min_community 10 --seed 42 --sigma_c_values 2 --p_values 0.25 --outfile_csv dmon_dice_0.5_mincomm_10_sigma2_p0.25.csv
 
+# srun python run_experiments.py --mu_values 0.5 --min_community 10 --seed 42 --sigma_c_values 2 --p_values 0.25 --outfile_csv dmon_dice_0.5_mincomm_10_sigma2_p0.25.csv
+# srun --unbuffered python -u run_experiments.py \
+#   --mu_values 0.4 \
+#   --realizations 20 \
+#   --p_values 0.5 0.65 0.8 0.95 \
+#   --min_community 60 \
+#   --seed 10 \
+#   --outfile_csv dmon_fcomdice_0.4_mincomm_60_sigmaAll_p0.5-0.95_featNone.csv
+
+
+#  RERUN DICE WITH FEATURES SAVED
+
+srun --unbuffered --label python -u run_experiments.py \
+  --mu_values 0.5 \
+  --p_values 0.5 \
+  --realizations 50 \
+  --min_community 10 --seed 42 \
+  --outfile_csv results_dice/dmon_dice_0.5_mincomm_10_sigmaAll_p0.5.csv  
+status=$?
+echo "[SLURM] run_experiments.py exit code = $status"
+exit $status
