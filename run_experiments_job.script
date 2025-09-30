@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name=dice10-mu05       # Job name for the array
+#SBATCH --job-name=fdice10-mu05       # Job name for the array
 #SBATCH --partition=gpu             # Partition (queue) name
 #SBATCH --output=filename_%A_%a.txt      # Output file for stdout (%A: array job ID, %a: task ID)
 #SBATCH --error=filename_%A_%a.err       # Output file for stderr (%A: array job ID, %a: task ID)
@@ -50,7 +50,7 @@ PY
 
 # Go to your project
 cd "$SLURM_SUBMIT_DIR/gnn-clustering-attack-defense"
-mkdir -p results_dice
+mkdir -p results_fdice
 # pwd; ls -al
 
 # (Optional) prove imports won’t crash before your prints:
@@ -489,12 +489,33 @@ echo "[SLURM] Launching run_experiments.py at $(date)"
 
 #  RERUN DICE WITH FEATURES SAVED
 
-srun --unbuffered --label python -u run_experiments.py \
+# srun --unbuffered --label python -u run_experiments.py \
+#   --mu_values 0.5 \
+#   --sigma_c_values 0.01 0.1 0.5 \
+#   --p_values 0.5 \
+#   --realizations 50 \
+#   --min_community 30 --seed 25 \
+#   --outfile_csv results_dice/dmon_dice_0.5_mincomm_30_sigma0.01-0.5_p0.5.csv  
+# status=$?
+# echo "[SLURM] run_experiments.py exit code = $status"
+# exit $status
+
+# srun --unbuffered --label python -u run_experiments.py \
+#   --mu_values 0.5 \
+#   --sigma_c_values 1 2 5 \
+#   --p_values 0.5 \
+#   --realizations 50 \
+#   --min_community 30 --seed 25 \
+#   --outfile_csv results_dice/dmon_dice_0.5_mincomm_30_sigma1-5_p0.5.csv  
+# status=$?
+# echo "[SLURM] run_experiments.py exit code = $status"
+# exit $status
+
+# RERUN F-DICE that failed
+srun --unbuffered python -u run_experiments.py \
   --mu_values 0.5 \
-  --p_values 0.5 \
-  --realizations 50 \
-  --min_community 10 --seed 42 \
-  --outfile_csv results_dice/dmon_dice_0.5_mincomm_10_sigmaAll_p0.5.csv  
-status=$?
-echo "[SLURM] run_experiments.py exit code = $status"
-exit $status
+  --realizations 20 \
+  --p_values 0.8 0.95 \
+  --min_community 10 \
+  --seed 42 \
+  --outfile_csv dmon_fdice_0.5_mincomm_10_sigmaAll_p0.8-0.95_featNone.csv
