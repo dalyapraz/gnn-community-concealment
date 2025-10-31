@@ -98,30 +98,32 @@ def plot_metric_changes(
         # pick an Axes to read legend entries from
         first_ax = axes.flat[0] if isinstance(axes, np.ndarray) else axes
 
-        handles, labels = first_ax.get_legend_handles_labels()
+        handles, legend_labels_mpl = first_ax.get_legend_handles_labels()
 
-        # (optional) dedupe labels if needed
-        by_label = dict(zip(labels, handles))
-        handles, labels = list(by_label.values()), list(by_label.keys())
+        # Only create legend if there are entries
+        if handles and legend_labels_mpl:
+            # (optional) dedupe labels if needed
+            by_label = dict(zip(legend_labels_mpl, handles))
+            handles, legend_labels_mpl = list(by_label.values()), list(by_label.keys())
 
-        # Shared, horizontal legend centered at the top
-        leg = fig.legend(
-            handles, labels,
-            loc='upper center',
-            ncol=len(labels),          # left→right in one row
-            frameon=True,
-            fontsize=14,
-            markerscale=0, 
-            bbox_to_anchor=(0.47, 1.05), # exactly centered above the axes area
-            bbox_transform=fig.transFigure
-        )
-        # Thicken ONLY legend lines
-        for h in leg.legend_handles:
-            try:
-                h.set_linewidth(3.0)   # <- legend line width
-                h.set_marker('None')   # ensure no marker shows
-            except Exception:
-                pass
+            # Shared, horizontal legend centered at the top
+            leg = fig.legend(
+                handles, legend_labels_mpl,
+                loc='upper center',
+                ncol=len(legend_labels_mpl),          # left→right in one row
+                frameon=True,
+                fontsize=14,
+                markerscale=0, 
+                bbox_to_anchor=(0.47, 1.05), # exactly centered above the axes area
+                bbox_transform=fig.transFigure
+            )
+            # Thicken ONLY legend lines
+            for h in leg.legend_handles:
+                try:
+                    h.set_linewidth(3.0)   # <- legend line width
+                    h.set_marker('None')   # ensure no marker shows
+                except Exception:
+                    pass
         plt.tight_layout(rect=[0,0,0.90,0.95]); plt.show()
         return delta_df
 
@@ -352,29 +354,31 @@ def plot_results_by_p(
         # pick an Axes to read legend entries from
         first_ax = axes.flat[0] if isinstance(axes, np.ndarray) else axes
 
-        handles, labels = first_ax.get_legend_handles_labels()
+        handles, legend_labels = first_ax.get_legend_handles_labels()
 
-        # (optional) dedupe labels if needed
-        by_label = dict(zip(labels, handles))
-        handles, labels = list(by_label.values()), list(by_label.keys())
+        # Only create legend if there are entries
+        if handles and legend_labels:
+            # (optional) dedupe labels if needed
+            by_label = dict(zip(legend_labels, handles))
+            handles, legend_labels = list(by_label.values()), list(by_label.keys())
 
-        # Shared, horizontal legend centered at the top
-        leg = fig.legend(
-            handles, labels,
-            loc='upper center',
-            ncol=len(labels),          # left→right in one row
-            frameon=True,
-            fontsize=16,
-            markerscale=0, 
-            bbox_to_anchor=(0.5, 1.03) # higher above the axes area to avoid overlap
-            )
-        # Thicken ONLY legend lines
-        for h in leg.legend_handles:
-            try:
-                h.set_linewidth(3.0)   # <- legend line width
-                h.set_marker('None')   # ensure no marker shows
-            except Exception:
-                pass
+            # Shared, horizontal legend centered at the top
+            leg = fig.legend(
+                handles, legend_labels,
+                loc='upper center',
+                ncol=len(legend_labels),          # left→right in one row
+                frameon=True,
+                fontsize=16,
+                markerscale=0, 
+                bbox_to_anchor=(0.5, 1.03) # higher above the axes area to avoid overlap
+                )
+            # Thicken ONLY legend lines
+            for h in leg.legend_handles:
+                try:
+                    h.set_linewidth(3.0)   # <- legend line width
+                    h.set_marker('None')   # ensure no marker shows
+                except Exception:
+                    pass
 
         # Leave room for the legend
         plt.tight_layout(rect=[0, 0, 1, 0.96])
@@ -938,7 +942,7 @@ def plot_relative_change_mu_sigma_heatmaps_multiple_methods(
     aggregate='mean',                     # 'mean' (default) or 'integral'
     eps=1e-30,                             # avoid divide-by-zero when Base≈0
     percent=False,                        # True -> show % (×100)
-    cmap='YlGnBu',
+    cmap=None,                            # dict per metric or single cmap for all
     annot=True,
     fmt='.3f',
     figsize_per_row=(14, 5)
@@ -956,6 +960,27 @@ def plot_relative_change_mu_sigma_heatmaps_multiple_methods(
     Assumes dataframes have: ['mu','sigma_c','b_percentage', <metrics...>, ...]
     Pre-filter to desired p before calling if needed.
     """
+
+    # Labels for metrics
+    labels = {
+        'ECS': r"$ECS$",
+        'M1': r"$\overline{\Delta M_1}$",
+        'M2': r"$\overline{\Delta M_2}$",
+        'p': r"$p$",
+        'sigma_c': r"$\sigma_c$",
+        'mu': r"$\mu$"
+    }
+
+    # Default colormaps per metric if not provided
+    if cmap is None:
+        cmap = {
+            'ECS': 'YlGnBu',
+            'M1': 'PuBuGn', 
+            'M2': 'YlOrBr'
+        }
+    elif isinstance(cmap, str):
+        # If single cmap provided, use it for all metrics
+        cmap = {m: cmap for m in metrics}
 
     mu_values    = sorted(pd.concat([df_base['mu']] + [d['mu'] for d in modified_dfs.values()]).unique())
     sigma_values = sorted(pd.concat([df_base['sigma_c']] + [d['sigma_c'] for d in modified_dfs.values()]).unique())
@@ -1012,7 +1037,7 @@ def plot_relative_change_mu_sigma_heatmaps_multiple_methods(
     rel_df = pd.DataFrame(rows)
     if rel_df.empty:
         raise ValueError("No relative values computed. Ensure overlapping (μ, σ_c) and b grids.")
-
+    
     # shared color scale per metric
     limits = {}
     for metric in metrics:
@@ -1031,7 +1056,7 @@ def plot_relative_change_mu_sigma_heatmaps_multiple_methods(
     elif n_cols == 1:
         axes = axes.reshape(n_rows, 1)
 
-    subtitle = "avg relative Δ(ModDice-Baseline)" if aggregate == 'mean' else "∫ Δ(ModDice-Baseline) db"
+    # subtitle = "Average relative Δ" if aggregate == 'mean' else "∫ Δ(ModDice-Baseline) db"
     unit = " (%)" if percent else ""
     for r, (method_label, _) in enumerate(modified_dfs.items()):
         df_row = rel_df[rel_df['method'] == method_label]
@@ -1040,10 +1065,22 @@ def plot_relative_change_mu_sigma_heatmaps_multiple_methods(
             df_m = df_row[df_row['metric'] == metric]
             pivot = df_m.pivot_table(index='mu', columns='sigma_c', values='rel_value')
             vmin, vmax = limits[metric]
-            sns.heatmap(pivot, cmap=cmap, annot=annot, fmt=fmt, ax=ax,
+            # Use metric-specific colormap
+            metric_cmap = cmap.get(metric, 'YlGnBu') if isinstance(cmap, dict) else cmap
+            sns.heatmap(pivot, cmap=metric_cmap, annot=annot, fmt=fmt, ax=ax,
                         vmin=vmin, vmax=vmax, cbar=True)
-            ax.set_title(f"{method_label} | {metric}: {subtitle}{unit}", fontsize=11)
-            ax.set_xlabel("σ_c"); ax.set_ylabel("μ")
+            # Use LaTeX labels for metrics in title
+            metric_label = labels.get(metric, metric)
+            # ax.set_title(f"{method_label} | {metric_label}: {subtitle}{unit}", fontsize=11)
+            ax.set_title(f"{metric_label}{unit}", fontsize=12)
+            ax.set_xlabel(labels['sigma_c'])
+            
+            # Only show y-axis label on first column (M1), hide for subsequent columns (M2, etc.)
+            if c == 0:
+                ax.set_ylabel(labels['mu'])
+            else:
+                ax.set_ylabel('')
+                ax.tick_params(axis='y', labelleft=False)
 
     plt.tight_layout()
     plt.show()
