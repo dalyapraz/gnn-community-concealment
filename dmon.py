@@ -199,42 +199,60 @@ class GCNWithSkip(nn.Module):
 
 
 class DMoN(torch.nn.Module):
-    def __init__(self, in_channels, num_clusters, hidden_channels=64, gcn_skip = False):
+    def __init__(self, in_channels, num_clusters, hidden_channels=32, num_layers=1, gcn_skip=True, 
+                 collapse_regularization=1.0, dropout=0.5):
         super().__init__()
-        if gcn_skip:
-            self.gcn = GCNConv(in_channels, hidden_channels, add_self_loops=False)
+        self.num_layers = num_layers
+        self.gcn_skip = gcn_skip
+        self.collapse_regularization = collapse_regularization
+        
+        # Build multiple GCN layers
+        self.convs = torch.nn.ModuleList()
+        if num_layers == 1:
+            if gcn_skip:
+                # DMoN paper: GCN without self-loops + learnable skip connection
+                self.convs.append(GCNWithSkip(in_channels, hidden_channels))
+            else:
+                # Alternative: standard GCN without self-loops
+                self.convs.append(GCNConv(in_channels, hidden_channels, add_self_loops=False))
         else:
-            self.gcn = GCNWithSkip(in_channels, hidden_channels)
-        self.pool = DMoNPooling([hidden_channels, hidden_channels], num_clusters, dropout=0.5)
+            # First layer
+            if gcn_skip:
+                self.convs.append(GCNWithSkip(in_channels, hidden_channels))
+            else:
+                self.convs.append(GCNConv(in_channels, hidden_channels, add_self_loops=False))
+            
+            # Additional hidden layers
+            for _ in range(num_layers - 1):
+                if gcn_skip:
+                    self.convs.append(GCNWithSkip(hidden_channels, hidden_channels))
+                else:
+                    self.convs.append(GCNConv(hidden_channels, hidden_channels, add_self_loops=False))
+        
+        self.pool = DMoNPooling([hidden_channels, hidden_channels], num_clusters, dropout=dropout)
         # paper uses 1 layer only
         # self.conv2 = DenseGCNConv(hidden_channels, hidden_channels) 
         # self.pool2 = DMoNPooling([hidden_channels, hidden_channels], num_clusters)
         
     def forward(self, x, edge_index):
-        x = F.selu(self.gcn(x, edge_index))
-        # x = F.dropout(x, p=0.5, training=self.training)
+        # Apply all GCN layers
+        for i, conv in enumerate(self.convs):
+            x = F.selu(conv(x, edge_index))
+        
         # Convert sparse to dense representation (for pooling)
         batch = torch.zeros(x.size(0), dtype=torch.long, device=x.device)
         x, mask = to_dense_batch(x, batch=batch) # x is now [1, N, F]
         adj = to_dense_adj(edge_index, batch=batch) # adj is now [1, N, N]
-        # print("x shape after conv1:", x.shape)
-        # print("adj shape:", adj.shape)
-        # print("mask shape:", mask.shape)
+        
         # Apply pooling
         clusters_assigned, x, adj, spectral_loss, ortho_loss, collapse_loss = self.pool(x, adj, mask) 
-        # print("ca1:", ca.shape)  # should be [1, N, K]
-        # print("x after pool1:", x.shape)
-        # print("adj after pool1:", adj.shape)
-        # Apply second convolution
-        # x = F.selu(self.conv2(x, adj))
-        # ca, x, adj, sl2, ol2, cl2 = self.pool2(x, adj)
-        # print("ca2:", ca.shape)  # should still be [1, N', K]
-        # print("x after pool2:", x.shape)
-        # print("adj after pool2:", adj.shape)
         
-        # Return cluster assignments and combined losses
-        # return ca.squeeze(0), sl1 + sl2 + ol1 + ol2 + cl1 + cl2
-        return clusters_assigned.squeeze(0), spectral_loss + ortho_loss + collapse_loss
+        # Return cluster assignments and combined losses with weighted collapse regularization
+        # print(f'Spectral Loss:{spectral_loss}')
+        # print(f'Orthogonal Loss: {ortho_loss}')
+        # print(f'Collapse Loss: {collapse_loss}')
+        total_loss = spectral_loss + ortho_loss + self.collapse_regularization * collapse_loss
+        return clusters_assigned.squeeze(0), total_loss
 
     
 

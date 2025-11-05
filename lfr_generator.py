@@ -257,7 +257,6 @@ def precompute_allpairs_neg_sqeuclidean(G, feature_key='x', device=None, dtype=t
     return F, S
 
 
-
 @torch.inference_mode()
 def precompute_node_comm_neg_sqeuclidean(G, true_labels, feature_key='x', device=None, dtype=torch.float32):
     """
