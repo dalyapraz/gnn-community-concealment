@@ -39,8 +39,8 @@ def load_real_graph(
     # # if make_undirected:
     # transform_list.append(T.ToUndirected())
     # transform_list.append(T.RemoveSelfLoops())
-    # transform = T.Compose([T.ToUndirected(), T.RemoveSelfLoops()])
-    transform = T.Compose([T.ToUndirected()])
+    transform = T.Compose([T.ToUndirected(), T.RemoveSelfLoops(), T.RemoveDuplicatedEdges()])
+    # transform = T.Compose([T.ToUndirected()])
 
     source = (source or "").strip()
     if source == "AttributedGraphDataset":
