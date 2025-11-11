@@ -22,7 +22,6 @@ def load_real_graph(
     - name: dataset name (e.g., 'Cora', 'Cora_ML', etc.)
     - source: which PyG dataset to use: 'AttributedGraphDataset' or 'CitationFull'
     - root: optional root folder for dataset cache; defaults to ~/pyg_data/<source>
-    - make_undirected: convert the graph to undirected and remove self-loops to match LFR format
 
     Returns
     - G: networkx.Graph with node attribute 'x' as a torch.Tensor per node
@@ -53,6 +52,9 @@ def load_real_graph(
     if len(dataset) == 0:
         raise RuntimeError(f"Loaded empty dataset for source={source}, name={name}")
     data = dataset[0]
+    # make sure data is undirected and has no self-loops
+    data = transform(data)
+    # make sure the edges are unique
 
     # Build NetworkX graph with 'x' per node (torch.Tensor) 
     # Include the node attribute 'x' when converting
