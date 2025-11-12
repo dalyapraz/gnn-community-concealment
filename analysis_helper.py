@@ -405,7 +405,7 @@ def plot_metric_heatmaps_same_scale(
     cmap_m2='OrRd',
     annot=True,
     fmt='.3f',
-    figsize=(18, 10)
+    figsize=(15, 10)
 ):
     # --- Load & combine ---
     csv_files_base = glob.glob(f"{folder_baseline}/{glob_baseline}")
@@ -467,21 +467,65 @@ def plot_metric_heatmaps_same_scale(
         metric_limits[metric] = (vmin, vmax)
 
     # --- Plot with shared scale per metric ---
+
+        # Make dedicated colorbar axes to the right of each row
+    fig.tight_layout()
+    fig.canvas.draw()  # ensure positions are computed
+
+    # Positions of the last column axes (rightmost)
+    ax_m1_last = axes[2]   # top-right
+    ax_m2_last = axes[5]   # bottom-right
+
+    # Add thin axes for colorbars next to those
+    bbox1 = ax_m1_last.get_position()
+    bbox2 = ax_m2_last.get_position()
+    cbar_ax_m1 = fig.add_axes([bbox1.x1 + 0.01, bbox1.y0, 0.015, bbox1.height])
+    cbar_ax_m2 = fig.add_axes([bbox2.x1 + 0.01, bbox2.y0, 0.015, bbox2.height])
+
+    counts = {'M1': 0, 'M2': 0}  # how many heatmaps of each metric we've drawn
+
     for ax, (metric, index, columns) in zip(axes, plot_configs):
         pivot = grouped.pivot_table(index=index, columns=columns, values=metric)
         vmin, vmax = metric_limits[metric]
+
         # Use one colormap for all M1, another for all M2
-        if metric == 'M1':
-            cmap_this = cmap_m1
-        else:
-            cmap_this = cmap_m2
-        sns.heatmap(
+        cmap_this = cmap_m1 if metric == 'M1' else cmap_m2
+
+        # Show the colorbar only on the last column per metric (i.e., the 3rd plot in each row)
+        # counts[metric] will be 0,1,2; we want cbar only when it equals 2
+        show_cbar = (counts[metric] == 2)
+        cbar_ax = cbar_ax_m1 if (metric == 'M1' and show_cbar) else (cbar_ax_m2 if (metric == 'M2' and show_cbar) else None)
+
+        hm = sns.heatmap(
             pivot, cmap=cmap_this, annot=annot, fmt=fmt, ax=ax,
-            vmin=vmin, vmax=vmax, cbar=True
+            vmin=vmin, vmax=vmax, cbar=show_cbar, cbar_ax=cbar_ax
         )
+        # if show_cbar and hm.collections:
+        #     hm.collections[0].colorbar.set_label(f"{labels[metric]} scale", rotation=270, labelpad=12)
+
         ax.set_title(f"{labels[metric]}: {labels[index]} vs {labels[columns]}", fontsize=12)
         ax.set_xlabel(labels[columns])
         ax.set_ylabel(labels[index])
+
+        counts[metric] += 1
+
+
+    # # --- Plot with shared scale per metric ---
+    # for ax, (metric, index, columns) in zip(axes, plot_configs):
+    #     pivot = grouped.pivot_table(index=index, columns=columns, values=metric)
+    #     vmin, vmax = metric_limits[metric]
+    #     # Use one colormap for all M1, another for all M2
+    #     if metric == 'M1':
+    #         cmap_this = cmap_m1
+    #     else:
+    #         cmap_this = cmap_m2
+    #     sns.heatmap(
+    #         pivot, cmap=cmap_this, annot=annot, fmt=fmt, ax=ax,
+    #         vmin=vmin, vmax=vmax, cbar=True
+    #     )
+    #     ax.set_title(f"{labels[metric]}: {labels[index]} vs {labels[columns]}", fontsize=12)
+    #     ax.set_xlabel(labels[columns])
+    #     ax.set_ylabel(labels[index])
 
     plt.tight_layout()
     plt.savefig("metric_heatmaps.png", dpi=300)
@@ -1461,3 +1505,164 @@ def plot_diff_at_b_vs_sigma_for_methods(
 
     return diff_df_detail, diff_df_plot
 
+def plot_results_real_networks(
+    method_folders,                # dict: {'Baseline': 'folder1', 'Method A': 'folder2', ...}
+    network_name=None,             # str: network name for title (optional)
+    file_glob="dmon_*.csv",        # pattern to match CSV files in each folder
+    metrics=("ECS", "M1", "M2"),
+    ylim_per_metric=None,          # e.g. {'ECS': (0,1), 'M1': (-0.005,0.19), 'M2': (-0.02,1.05)}
+    method_styles=None,            # {'Method': {'color':..., 'linestyle':..., 'marker':...}}
+    figsize=None,                  # overall figsize for single-row multi-metric figure
+    show_std=True,                 # shaded std for each method curve
+    fill_alpha=0.15                # alpha for std shading
+):
+    """Plot real-network results side-by-side (one row) for multiple methods.
+
+    Creates ONE figure with columns = metrics; each subplot overlays all methods.
+    A single shared legend (methods) is placed at the top center (like plot_results_by_p style).
+
+    Parameters
+    ----------
+    method_folders : dict
+        Mapping of method name -> folder path containing CSV files.
+    network_name : str, optional
+        Network name appended to each subplot title.
+    file_glob : str
+        Glob pattern for CSV files per folder.
+    metrics : tuple[str]
+        Metrics to plot (each becomes one column).
+    ylim_per_metric : dict | None
+        Optional y-limits per metric.
+    method_styles : dict | None
+        Per-method style dict; auto-generated if None.
+    figsize : (w, h) | None
+        Size of the whole figure; if None -> (5 * len(metrics), 5).
+    show_std : bool
+        Whether to shade mean ± std per method.
+    fill_alpha : float
+        Alpha for std band.
+
+    Returns
+    -------
+    dict_dfs : dict
+        Loaded DataFrames per method.
+    fig : matplotlib.figure.Figure
+        The combined figure object.
+    """
+
+    # --- Defaults ---
+    if figsize is None:
+        figsize = (5 * len(metrics), 5)
+
+    cud_colors = [
+        "#000000", "#E69F00", "#56B4E9", "#009E73",
+        "#F0E442", "#0072B2", "#D55E00", "#CC79A7"
+    ]
+
+    if method_styles is None:
+        method_names = list(method_folders.keys())
+        linestyles = ['-', '--', '-.', ':']
+        markers = ['o', 's', '^', 'D', 'v', '<', '>', 'p', '*', 'h']
+        method_styles = {}
+        for i, m in enumerate(method_names):
+            method_styles[m] = {
+                'color': cud_colors[i % len(cud_colors)],
+                'linestyle': linestyles[i % len(linestyles)],
+                'marker': markers[i % len(markers)]
+            }
+
+    labels = {
+        'ECS': r"$ECS$",
+        'M1': r"$M_1$",
+        'M2': r"$M_2$"
+    }
+
+    # --- Load data ---
+    dict_dfs = {}
+    for method_name, folder in method_folders.items():
+        csv_files = glob.glob(f"{folder}/{file_glob}")
+        if not csv_files:
+            print(f"Warning: No CSV files matched in {folder} with pattern {file_glob}")
+            continue
+        frames = [pd.read_csv(fp, keep_default_na=False) for fp in csv_files]
+        dict_dfs[method_name] = pd.concat(frames, ignore_index=True)
+
+    if not dict_dfs:
+        raise FileNotFoundError("No data loaded from any method folder")
+
+    # --- Figure layout: one row ---
+    fig, axes = plt.subplots(1, len(metrics), figsize=figsize, sharex=False, sharey=False)
+    if len(metrics) == 1:
+        axes = [axes]
+
+    # Collect method legend entries once
+    method_handles = {}
+
+    for idx, metric in enumerate(metrics):
+        ax = axes[idx]
+        for method_name, df in dict_dfs.items():
+            grouped = (df.groupby('b_percentage')
+                         .agg({metric: ['mean', 'std']})
+                         .reset_index())
+            if grouped.empty or (metric, 'mean') not in grouped.columns:
+                continue
+            means = grouped[(metric, 'mean')].astype(float)
+            stds  = grouped[(metric, 'std')].astype(float).fillna(0.0)
+            xvals = (grouped['b_percentage'].astype(float) * 100.0).values
+
+            style = method_styles.get(method_name, {})
+            line = ax.plot(
+                xvals, means.values,
+                marker=style.get('marker', 'o'),
+                linestyle=style.get('linestyle', '-'),
+                color=style.get('color', '#000000'),
+                label=method_name,
+                linewidth=2,
+                markersize=6
+            )[0]
+            if show_std:
+                ax.fill_between(
+                    xvals,
+                    (means - stds).values,
+                    (means + stds).values,
+                    color=style.get('color', '#000000'),
+                    alpha=fill_alpha
+                )
+            # keep first handle per method for legend
+            if method_name not in method_handles:
+                method_handles[method_name] = line
+
+        title = labels.get(metric, metric)
+        if network_name:
+            title = f"{title} – {network_name}"
+        ax.set_title(title, fontsize=14)
+        ax.set_xlabel(r'Budget $\beta_b$ (% intra-community edges)', fontsize=12)
+        ax.set_ylabel(labels.get(metric, metric), fontsize=12)
+        if isinstance(ylim_per_metric, dict) and metric in ylim_per_metric:
+            ax.set_ylim(ylim_per_metric[metric])
+        ax.grid(False)
+
+    # --- Shared legend (top center like plot_results_by_p) ---
+    if method_handles:
+        handles = list(method_handles.values())
+        legend_labels = list(method_handles.keys())
+        leg = fig.legend(
+            handles, legend_labels,
+            loc='upper center',
+            ncol=len(legend_labels),
+            frameon=True,
+            fontsize=12,
+            markerscale=0,
+            bbox_to_anchor=(0.5, 1.03)
+        )
+        for h in leg.legend_handles:
+            try:
+                h.set_linewidth(3.0)
+                h.set_marker('None')
+            except Exception:
+                pass
+
+    plt.tight_layout(rect=[0, 0, 1, 0.95])
+    plt.show()
+
+    return dict_dfs, fig
