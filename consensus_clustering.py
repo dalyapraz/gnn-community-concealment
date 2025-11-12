@@ -57,7 +57,7 @@ def consensus_matrix_dense(method, R, G):
     D /= Rruns
     return D
 
-def consensus_clustering(D, tau=0.1, reps=100):
+def consensus_labels(D, tau=0.1, reps=100):
     # pip install git+https://github.com/fiuneuro/brainconn.git
     from brainconn.clustering import consensus_und
     # D is the agreement matrix you build from your R partitions
