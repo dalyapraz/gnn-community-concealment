@@ -1581,6 +1581,7 @@ def plot_results_real_networks(
     dict_dfs = {}
     for method_name, folder in method_folders.items():
         csv_files = glob.glob(f"{folder}/{file_glob}")
+        print(f"File name {csv_files}")
         if not csv_files:
             print(f"Warning: No CSV files matched in {folder} with pattern {file_glob}")
             continue
