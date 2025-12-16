@@ -77,8 +77,8 @@ def main(args):
                 mu=mu, n=n, min_community=min_community,
                 feature_mode='gaussian', sigma_c=sigma_c, seed=seed)
             # Precompute pairwise similarities for feature-based attacks
-            _, S = precompute_allpairs_neg_sqeuclidean(G)
-            # _, S_nc = precompute_node_comm_neg_sqeuclidean(G, true_labels)
+            # _, S = precompute_allpairs_neg_sqeuclidean(G)
+            _, S_nc = precompute_node_comm_neg_sqeuclidean(G, true_labels)
             # === Save graph and membership ===
             base_name = f"graph_n{n}_mu{mu}_sigma{sigma_c}_min_comm{min_community}"
             graph_file = os.path.join(results_dir, base_name + ".edgelist")
@@ -128,8 +128,8 @@ def main(args):
                             # G_attacked = attacks.dicehdcd_community_attack(G.copy(), target_community, true_labels, bb)
                             # G_attacked = attacks.dicecdhd_community_attack(G.copy(), target_community, true_labels, bb)
                             # G_attacked = attacks.dicecdhc_community_attack(G.copy(), target_community, true_labels, bb)
-                            G_attacked = attacks.dice_cfeature_node_attack(G.copy(), target_community, true_labels, S,  bb, p=p_val, feature_mode= args.attack_feature_mode)
-                            # G_attacked = attacks.dice_cfeature_comm_attack(G.copy(), target_community, true_labels, S_nc,  bb, p=p_val, feature_mode= args.attack_feature_mode)
+                            # G_attacked = attacks.dice_cfeature_node_attack(G.copy(), target_community, true_labels, S,  bb, p=p_val, feature_mode= args.attack_feature_mode)
+                            G_attacked = attacks.dice_cfeature_comm_attack(G.copy(), target_community, true_labels, S_nc,  bb, p=p_val, feature_mode= args.attack_feature_mode)
                             data_attacked = from_networkx(G_attacked)
                             data_attacked.x = torch.stack([G_attacked.nodes[i]['x'] for i in range(len(G_attacked))])
                             pred_labels_attacked = train_model(data_attacked, true_labels)

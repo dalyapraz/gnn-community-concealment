@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=fcomdice10_grid
+#SBATCH --job-name=fcomdice10
 #SBATCH --partition=gpu
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
@@ -8,7 +8,7 @@
 #SBATCH --time=2-00:00:00  # 2 days 
 #SBATCH --mem=100G
 #SBATCH -A r01712
-#SBATCH --array=0-17  # Adjust based on number of lines in params.tsv
+#SBATCH --array=0-11  # Adjust based on number of lines in params.tsv
 #SBATCH --output=logs/%x_%A_%a.out # Job name, array job ID, task ID
 #SBATCH --error=logs/%x_%A_%a.err # Job name, array job ID, task ID
 #SBATCH --mail-type=ALL
@@ -20,10 +20,10 @@ module load python/gpu/3.11.5
 module load cudatoolkit/11.8
 
 cd "$SLURM_SUBMIT_DIR/gnn-clustering-attack-defense"
-mkdir -p results_fcomdice logs
+mkdir -p results_fcomdice_30r logs
 
 # Get this task's params (key=value pairs) and eval them
-line=$(sed -n "$((SLURM_ARRAY_TASK_ID+1))p" params30_pB.tsv)
+line=$(sed -n "$((SLURM_ARRAY_TASK_ID+1))p" params10_pD.tsv)
 # shellcheck disable=SC2086
 eval "$line"   # defines: mu sigma_c minc seed pvals feature outfile
 
@@ -46,12 +46,12 @@ fi
 srun --unbuffered python -u run_experiments.py \
   --mu_values "$mu" \
   --sigma_c_values $sigma_c \
-  --realizations 20 \
+  --realizations 30 \
   --p_values $pvals \
   --min_community "$minc" \
   --seed "$seed" \
   ${FEATURE_ARG[@]+"${FEATURE_ARG[@]}"} \
-  --outfile_csv "results_fcomdice/${outfile}"
+  --outfile_csv "results_fcomdice_30r/${outfile}"
 
 
 status=$?
