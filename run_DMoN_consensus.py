@@ -6,6 +6,8 @@ Run DMoN R times on a real graph loaded via load_real_graph() and save:
 
 Usage (example):
   python run_DMoN_consensus.py --name Wiki --k 53 --R 50 --epochs 500 --out D_Wiki_k53.npy
+
+Author: Dalya Manatova with assistance from Copilot (GPT-5)
 """
 
 import argparse, time, os, numpy as np, torch
@@ -19,7 +21,7 @@ from load_real_network import load_real_graph  # adjust import path if needed
 def run_dmon_once(data, k, lr=1e-3, weight_decay=5e-4,
                   hidden=64, num_layers=2, dropout=0.5, gcn_skip=True,
                   collapse_regularization=1.0, epochs=500, device=None, seed=None):
-    import dmon  # assumes your dmon package is importable
+    import dmon  
 
     if seed is not None:
         import random
@@ -90,13 +92,13 @@ def agreement_matrix_from_labels(labels_matrix: np.ndarray) -> np.ndarray:
 def dmon_consensus_agreement(data, k, R=50, seeds=None, **train_kwargs):
     n = data.num_nodes
     labels_runs = np.zeros((R, n), dtype=int)
-    t0 = time.time()
+    
     if seeds is None:
         seeds = list(range(R))
     for i in range(R):
+        t0 = time.time()
         labels_runs[i] = run_dmon_once(data, k, seed=seeds[i], **train_kwargs)
-        if (i+1) % 5 == 0 or i == 0:
-            print(f"[{i+1}/{R}] elapsed {time.time()-t0:.1f}s", flush=True)
+        print(f"[{i+1}/{R}] elapsed {time.time()-t0:.1f}s", flush=True)
     D = agreement_matrix_from_labels(labels_runs)
     return labels_runs, D
 
@@ -106,6 +108,8 @@ def main():
     p.add_argument("--name", type=str, required=True, help="Dataset name for load_real_graph (e.g., Wiki)")
     p.add_argument("--k", type=int, required=True, help="Number of clusters for DMoN")
     p.add_argument("--R", type=int, default=50, help="Number of independent DMoN runs")
+    p.add_argument("--lr", type=float, default=1e-3)
+    p.add_argument("--hidden", type=int, default=64)
     p.add_argument("--epochs", type=int, default=500)
     p.add_argument("--out", type=str, default=None, help="Output filename for D (npy). If omitted, auto-named.")
     p.add_argument("--device", type=str, default=None, help="cpu | cuda | None(auto)")

@@ -4,12 +4,13 @@ set -euo pipefail
 # ========== Parameters to vary ==========
 SIGMA_LIST=(0.01 0.1 0.5 1 2 5)
 MU_LIST=(0.01 0.1 0.2 0.3 0.4 0.5)
-FEATURE_LIST=("None" "connecting_node" "average_community")
+FEATURE_LIST=("connecting_node" "average_community")
+# FEATURE_LIST=("None" "connecting_node" "average_community")
 
 # choose which min_community blocks to include
 DO_MINCOMM_60=0
-DO_MINCOMM_30=1
-DO_MINCOMM_10=0
+DO_MINCOMM_30=0
+DO_MINCOMM_10=1
 
 # Bundle all sigma in one row (set to 0 to emit one row per sigma)
 COMBINE_SIGMA=1
@@ -20,12 +21,19 @@ COMBINE_SIGMA=1
 
 
 # Split p into two batches
-OUT_A=params30_pA.tsv   # p = 0.5 0.65
-OUT_B=params30_pB.tsv   # p = 0.8 0.95
-: > "$OUT_A"; : > "$OUT_B"
+OUT_A=params10_pA.tsv   # p = 0.5 0.65
+OUT_B=params10_pB.tsv   # p = 0.8 0.95
+OUT_C=params10_pC.tsv   
+OUT_D=params10_pD.tsv  
+# : > "$OUT_A"; : > "$OUT_B"
+: > "$OUT_A"; : > "$OUT_B"; : > "$OUT_C"; : > "$OUT_D"
 
-PVALS_A="0.5 0.65"; PTAG_A="0.5-0.65"
-PVALS_B="0.8 0.95"; PTAG_B="0.8-0.95"
+# PVALS_A="0.5 0.65"; PTAG_A="0.5-0.65"
+# PVALS_B="0.8 0.95"; PTAG_B="0.8-0.95"
+PVALS_A="0.5"; PTAG_A="0.5"
+PVALS_B="0.65"; PTAG_B="0.65"
+PVALS_C="0.8"; PTAG_C="0.8"
+PVALS_D="0.95"; PTAG_D="0.95"
 
 emit_line () {
   # args: out mu sigma_values sigma_tag minc seed feature pvals ptag
@@ -79,15 +87,21 @@ fi
 if [[ "$DO_MINCOMM_30" == "1" ]]; then
   emit_block "$OUT_A" 30 25 25 "$PVALS_A" "$PTAG_A"
   emit_block "$OUT_B" 30 25 25 "$PVALS_B" "$PTAG_B"
+  emit_block "$OUT_C" 30 25 25 "$PVALS_C" "$PTAG_C"
+  emit_block "$OUT_D" 30 25 25 "$PVALS_D" "$PTAG_D"
 fi
 
 if [[ "$DO_MINCOMM_10" == "1" ]]; then
   emit_block "$OUT_A" 10 42 42 "$PVALS_A" "$PTAG_A"
   emit_block "$OUT_B" 10 42 42 "$PVALS_B" "$PTAG_B"
+  emit_block "$OUT_C" 10 42 42 "$PVALS_C" "$PTAG_C"
+  emit_block "$OUT_D" 10 42 42 "$PVALS_D" "$PTAG_D"
 fi
 
 echo "Wrote $(wc -l < "$OUT_A") lines to $OUT_A"
 echo "Wrote $(wc -l < "$OUT_B") lines to $OUT_B"
+echo "Wrote $(wc -l < "$OUT_C") lines to $OUT_C"
+echo "Wrote $(wc -l < "$OUT_D") lines to $OUT_D"
 
 # # ---------- min_community blocks (all p in one) ----------
 # if [[ "$DO_MINCOMM_60" == "1" ]]; then
