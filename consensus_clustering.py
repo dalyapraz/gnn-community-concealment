@@ -65,7 +65,7 @@ def consensus_matrix_dense(method, R, G):
     D /= Rruns
     return D
 
-def consensus_labels(D, tau=0.1, reps=100):
+def consensus_labels(D, tau=0.3, reps=100):
     # pip install git+https://github.com/fiuneuro/brainconn.git
     from brainconn.clustering import consensus_und
     # D is the agreement matrix you build from your R partitions
@@ -204,7 +204,7 @@ def mantel_embedding_correlation(G, X, d=32, nperm=499, seed=0):
     model = n2v.fit(window=10, min_count=1, batch_words=4)
     Z_struct = np.vstack([model.wv[str(n)] for n in G.nodes()])
 
-    # --- feature embedding: PCA ---
+    # --- features reduced with PCA ---
     X_mat = X.toarray() if hasattr(X, "toarray") else X
     Z_feat = PCA(n_components=d, random_state=seed).fit_transform(X_mat)
 
@@ -262,18 +262,18 @@ def compute_dataset_metrics(dataset_name, csv_file="dataset_metrics.csv"):
     assort = nx.attribute_assortativity_coefficient(G, "label")
 
     # Consensus clustering via Louvain
-    # print("Computing consensus partition...")
-    # D = consensus_matrix_dense("louvain", R=50, G=G)
-    # CC = consensus_labels(D, reps=100)
+    print("Computing consensus partition...")
+    D = consensus_matrix_dense("louvain", R=50, G=G)
+    CC = consensus_labels(D, reps=100)
     # simple one louvain
-    print("Computing Louvain partition...")
-    partition = cdlib.algorithms.louvain(G)
-    partition = [list(c) for c in partition.communities]
-    labels = {}
-    for i, community in enumerate(partition):
-        for node in community:
-            labels[node] = i 
-    CC = [labels[node] for node in G.nodes()]
+    # print("Computing Louvain partition...")
+    # partition = cdlib.algorithms.louvain(G)
+    # partition = [list(c) for c in partition.communities]
+    # labels = {}
+    # for i, community in enumerate(partition):
+    #     for node in community:
+    #         labels[node] = i 
+    # CC = [labels[node] for node in G.nodes()]
     k_consensus = len(set(CC))
 
     # Structure vs True labels
@@ -303,7 +303,7 @@ def compute_dataset_metrics(dataset_name, csv_file="dataset_metrics.csv"):
         "F1_feature_predict_true_labels",
         "NMI_features_vs_true_labels", "ECS_features_vs_true_labels",
         "NMI_features_vs_consensus_louvain", "ECS_features_vs_consensus_louvain",
-        "Mantel_r", "Mantel_p"
+        "Mantel_r", "Mantel_p", "links to dataset"
     ]
 
     row = [
@@ -313,7 +313,7 @@ def compute_dataset_metrics(dataset_name, csv_file="dataset_metrics.csv"):
         f1_score,
         nmi_feat_true, ecs_feat_true,
         nmi_feat_cons, ecs_feat_cons,
-        mantel_r, mantel_p
+        mantel_r, mantel_p, ''
     ]
 
     write_header = not os.path.exists(csv_file)

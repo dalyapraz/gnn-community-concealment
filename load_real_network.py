@@ -123,8 +123,8 @@ def load_real_graph(
     #     dataset = LastFMAsia(root=root, transform=transform)
     elif name_clean in ["actor"]:
         dataset = Actor(root=root, transform=transform)
-    elif name_clean in ["reddit2"]:
-        dataset = Reddit2(root=root, transform=transform)
+    # elif name_clean in ["reddit2"]:   # too large
+    #     dataset = Reddit2(root=root, transform=transform)
     # elif name_clean in ["twitch"]:
     #     dataset = Twitch(root=root, name = "EN", transform=transform)
     # elif name_clean in ["gemsecdeezer"]:
