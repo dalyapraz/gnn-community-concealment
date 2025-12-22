@@ -120,9 +120,19 @@ def main(args):
     for target_label in set(true_labels):
         target_community = [nn for nn, label in enumerate(true_labels) if label == target_label]
         target_size = len(target_community)
+        if target_size == 1:
+            print(f"Skipping target label {target_label} because it has only one node.")
+            continue
         # Compute initial ECS, M1, M2 before attack r times for averaging
         for realization in range(realizations):
+            # import psutil
+            # print("RSS GB:", psutil.Process(os.getpid()).memory_info().rss / 1e9)
+            # if torch.cuda.is_available():
+            #     print("GPU GB:", torch.cuda.memory_allocated() / 1e9)
             pred_labels = train_model(data, true_labels, num_features=dim_features, num_layers=args.num_layers, hidden=args.hidden, epochs=args.epochs, lr=args.lr)
+            # print("RSS GB:", psutil.Process(os.getpid()).memory_info().rss / 1e9)
+            # if torch.cuda.is_available():
+            #     print("GPU GB:", torch.cuda.memory_allocated() / 1e9)
             ecs_initial = attacks.compute_ECS(true_labels, pred_labels)
             M1 = attacks.compute_M1(target_list=target_community, labels=pred_labels)
             M2 = attacks.compute_M2(target_list=target_community, labels=pred_labels)
@@ -138,15 +148,26 @@ def main(args):
             for p_val in args.p_values:
                 for realization in range(realizations):
                     # print(f"Realization {realization+1}/{realizations} | mu={mu} sigma_c={sigma_c} label={target_label} b={bb}")
+                    # print(f"Realization {realization+1}/{realizations} | label={target_label} b={bb}")
                     start = time.time()
                     if args.FComDICE:
                         # print("Using Feature + Community DICE attack")
                         G_attacked = attacks.dice_cfeature_comm_attack(G.copy(), target_community, true_labels, S_nc,  bb, p=p_val, feature_mode= args.attack_feature_mode)
                     else:
                         G_attacked = attacks.dice_community_attack(G.copy(), target_community, bb, p=p_val)
+                        # print(f"Performed DICE community attack with budget {bb} and p={p_val}")
                     data_attacked = from_networkx(G_attacked)
+                    # print("Graph converted to PyG Data")
                     data_attacked.x = torch.stack([G_attacked.nodes[i]['x'] for i in range(len(G_attacked))])
+                    # print("Memory after attack before training")
+                    # print("RSS GB:", psutil.Process(os.getpid()).memory_info().rss / 1e9)
+                    # if torch.cuda.is_available():
+                    #     print("GPU GB:", torch.cuda.memory_allocated() / 1e9)
                     pred_labels_attacked = train_model(data_attacked, true_labels, num_features=dim_features, num_layers=args.num_layers, hidden=args.hidden, epochs=args.epochs, lr=args.lr)
+                    # print("Memory after attack after training")
+                    # print("RSS GB:", psutil.Process(os.getpid()).memory_info().rss / 1e9)
+                    # if torch.cuda.is_available():
+                    #     print("GPU GB:", torch.cuda.memory_allocated() / 1e9)
                     ecs = attacks.compute_ECS(true_labels, pred_labels_attacked)
                     M1 = attacks.compute_M1(target_list=target_community, labels=pred_labels_attacked)
                     M2 = attacks.compute_M2(target_list=target_community, labels=pred_labels_attacked)

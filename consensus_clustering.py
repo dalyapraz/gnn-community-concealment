@@ -68,7 +68,7 @@ def consensus_matrix_dense(method, R, G):
 def consensus_labels(D, tau=0.1, reps=100):
     # pip install git+https://github.com/fiuneuro/brainconn.git
     from brainconn.clustering import consensus_und
-    # D is the agreement matrix you build from your R partitions
+    # D is the agreement matrix you build from R partitions
     S = consensus_und(D, tau=tau, reps=reps)
     return S
 
@@ -262,18 +262,18 @@ def compute_dataset_metrics(dataset_name, csv_file="dataset_metrics.csv"):
     assort = nx.attribute_assortativity_coefficient(G, "label")
 
     # Consensus clustering via Louvain
-    # print("Computing consensus partition...")
-    # D = consensus_matrix_dense("louvain", R=50, G=G)
-    # CC = consensus_labels(D, reps=100)
+    print("Computing consensus partition...")
+    D = consensus_matrix_dense("louvain", R=50, G=G)
+    CC = consensus_labels(D, reps=100)
     # simple one louvain
-    print("Computing Louvain partition...")
-    partition = cdlib.algorithms.louvain(G)
-    partition = [list(c) for c in partition.communities]
-    labels = {}
-    for i, community in enumerate(partition):
-        for node in community:
-            labels[node] = i 
-    CC = [labels[node] for node in G.nodes()]
+    # print("Computing Louvain partition...")
+    # partition = cdlib.algorithms.louvain(G)
+    # partition = [list(c) for c in partition.communities]
+    # labels = {}
+    # for i, community in enumerate(partition):
+    #     for node in community:
+    #         labels[node] = i 
+    # CC = [labels[node] for node in G.nodes()]
     k_consensus = len(set(CC))
 
     # Structure vs True labels

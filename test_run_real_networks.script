@@ -1,9 +1,9 @@
 #!/bin/bash
 
-#SBATCH --job-name=FBDice25       # Job name for the array
+#SBATCH --job-name=trueCiteseerDICE      # Job name for the array
 #SBATCH --partition=gpu-debug             # Partition (queue) name
-#SBATCH --output=filename_%A_%a.txt      # Output file for stdout (%A: array job ID, %a: task ID)
-#SBATCH --error=filename_%A_%a.err       # Output file for stderr (%A: array job ID, %a: task ID)
+#SBATCH --output=logs/%x_%A_%a.out      # Output file for stdout (%A: array job ID, %a: task ID)
+#SBATCH --error=logs/%x_%A_%a.err       # Output file for stderr (%A: array job ID, %a: task ID)
 #SBATCH --mail-type=ALL                 # Email notification for job events
 #SBATCH --mail-user=dmanato@iu.edu      # Email address to receive notifications
 #SBATCH --nodes=1                       # Number of nodes
@@ -31,8 +31,9 @@ export OPENBLAS_NUM_THREADS=${SLURM_CPUS_PER_TASK}
 export CUDA_LAUNCH_BLOCKING=1
 
 module purge
-module load python/gpu/3.11.5
-module load cudatoolkit/11.8
+# module load python/gpu/3.11.5 # not available any more on big red 
+# module load cudatoolkit/11.8
+module load python/gpu/3.10.10
 
 echo "[SLURM] JobID: $SLURM_JOB_ID  Node: $(hostname)"
 echo "[SLURM] NodeList: ${SLURM_NODELIST-}  SubmitDir: ${SLURM_SUBMIT_DIR-}"
@@ -63,6 +64,29 @@ PY
 
 echo "[SLURM] Launching run_experiments.py at $(date)"
 
+# lastfm DICE with consensus - runs into out of memory issue
+srun --unbuffered --label python -u run_experiments_real_networks.py \
+  --p_values 0.5 \
+  --b_percentages 0.01 \
+  --no-consensus \
+  --realizations 1 \
+  --network_name Citeseer \
+  --outfile_csv test_dice_Citeseer_true_labels.csv
+status=$?
+echo "[SLURM] run_experiments_real_networks.py exit code = $status"
+exit $status
+
+# lastfm DICE with consensus - runs into out of memory issue
+# srun --unbuffered --label python -u run_experiments_real_networks.py \
+#   --p_values 0.5 \
+#   --b_percentages 0.01 \
+#   --realizations 2 \
+#   --network_name lastfm_asia \
+#   --outfile_csv test_dice_lastfm_asia.csv
+# status=$?
+# echo "[SLURM] run_experiments_real_networks.py exit code = $status"
+# exit $status
+
 # srun --unbuffered --label python -u run_experiments_real_networks.py \
 #   --p_values 0.5 --realizations 4 \
 #   --hidden 32 \
@@ -74,15 +98,15 @@ echo "[SLURM] Launching run_experiments.py at $(date)"
 # exit $status
 
 # Facebook DICE with consensus
-srun --unbuffered --label python -u run_experiments_real_networks.py \
-  --p_values 0.5 --realizations 5 \
-  --hidden 32 \
-  --lr 0.01 \
-  --network_name Facebook \
-  --outfile_csv results_dice_real_networks_consensus/dmon_dice_Facebook25.csv
-status=$?
-echo "[SLURM] run_experiments_real_networks.py exit code = $status"
-exit $status
+# srun --unbuffered --label python -u run_experiments_real_networks.py \
+#   --p_values 0.5 --realizations 5 \
+#   --hidden 32 \
+#   --lr 0.01 \
+#   --network_name Facebook \
+#   --outfile_csv results_dice_real_networks_consensus/dmon_dice_Facebook25.csv
+# status=$?
+# echo "[SLURM] run_experiments_real_networks.py exit code = $status"
+# exit $status
 
 # Facebook FComDICE with consensus
 # srun --unbuffered --label python -u run_experiments_real_networks.py \
