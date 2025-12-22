@@ -1,3 +1,13 @@
+"""
+This module provides functions for analyzing community features in graphs,
+including reading membership and feature files, computing community centroids,
+and calculating pairwise distances between communities.
+This analysis is useful for understanding the structure and relationships
+between different communities within a graph and effect of these on community detection. 
+Community features are used for SHAP analysis. 
+"""
+
+
 import networkx as nx
 import numpy as np
 import pandas as pd
