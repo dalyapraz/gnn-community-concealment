@@ -11,9 +11,8 @@ Author: Dalya Manatova with assistance from Copilot (GPT-5)
 """
 
 import argparse, time, os, numpy as np, torch
+from load_real_network import load_real_graph 
 
-# ------- your loader (ensure it's in PYTHONPATH or same folder) -------
-from load_real_network import load_real_graph  # adjust import path if needed
 
 # -----------------------------
 # One DMoN run → labels
@@ -86,10 +85,26 @@ def agreement_matrix_from_labels(labels_matrix: np.ndarray) -> np.ndarray:
     return D
 
 
+# -----------------------------------
+# Consensus clustering from agreement matrix D
+# -----------------------------------
+def consensus_labels(D, tau=0.1, reps=100):
+    try:
+        from brainconn.clustering import consensus_und
+    except ImportError as e:
+        raise RuntimeError(
+            "brainconn not installed in GPU environment.\n"
+            "Run:\n"
+            "  module load python/gpu/3.10.10\n"
+            "  pip install --user git+https://github.com/fiuneuro/brainconn.git"
+        ) from e
+
+    return consensus_und(D, tau=tau, reps=reps)
+
 # -----------------------------------------------------
 # Run DMoN R times at fixed k → labels_matrix & D
 # -----------------------------------------------------
-def dmon_consensus_agreement(data, k, R=50, seeds=None, **train_kwargs):
+def dmon_consensus_agreement(data, k, R=50, seeds=None, tau=0.3, reps=100, **train_kwargs):
     n = data.num_nodes
     labels_runs = np.zeros((R, n), dtype=int)
     
@@ -100,7 +115,8 @@ def dmon_consensus_agreement(data, k, R=50, seeds=None, **train_kwargs):
         labels_runs[i] = run_dmon_once(data, k, seed=seeds[i], **train_kwargs)
         print(f"[{i+1}/{R}] elapsed {time.time()-t0:.1f}s", flush=True)
     D = agreement_matrix_from_labels(labels_runs)
-    return labels_runs, D
+    labels_consensus = consensus_labels(D, tau=tau, reps=reps)
+    return labels_runs, D, labels_consensus
 
 
 def main():
@@ -108,6 +124,8 @@ def main():
     p.add_argument("--name", type=str, required=True, help="Dataset name for load_real_graph (e.g., Wiki)")
     p.add_argument("--k", type=int, required=True, help="Number of clusters for DMoN")
     p.add_argument("--R", type=int, default=50, help="Number of independent DMoN runs")
+    p.add_argument("--tau", type=float, default=0.3, help="Tau parameter for consensus clustering")
+    p.add_argument("--reps", type=int, default=100, help="Number of repetitions for consensus clustering")
     p.add_argument("--lr", type=float, default=1e-3)
     p.add_argument("--hidden", type=int, default=64)
     p.add_argument("--epochs", type=int, default=500)
@@ -121,22 +139,26 @@ def main():
 
     device = torch.device(args.device) if args.device else None
 
-    labels_matrix, D = dmon_consensus_agreement(
+    labels_matrix, D, labels_consensus = dmon_consensus_agreement(
         data,
         k=args.k,
         R=args.R,
+        tau=args.tau,
+        reps=args.reps,
         epochs=args.epochs,
         device=device,
     )
-
+    print("Total number of consenus clusters:", len(set(labels_consensus)))
     # Save outputs
     out_D = args.out or f"D_{args.name}_k{args.k}_R{args.R}.npy"
     out_labels = out_D.replace(".npy", "_labels.npy")
+    out_consensus = out_D.replace(f"R{args.R}.npy", f"tau{args.tau}_consensus.npy")
     np.save(out_D, D)
     np.save(out_labels, labels_matrix)
+    np.save(out_consensus, labels_consensus)
     print(f"Saved D to {out_D}")
     print(f"Saved labels_matrix to {out_labels}")
-
+    print(f"Saved labels_consensus to {out_consensus}")
 
 if __name__ == "__main__":
     main()

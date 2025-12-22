@@ -82,6 +82,10 @@ def load_snap_graph(folder):
 
     # --- Build networkx graph ---
     G = nx.from_scipy_sparse_array(A)
+    
+    # --- add node features as attribute 'x' ---
+    for i, x_i in enumerate(x):
+        G.nodes[i]['x'] = x_i
 
     return G, data, y
 

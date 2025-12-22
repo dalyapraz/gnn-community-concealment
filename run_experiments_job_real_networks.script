@@ -1,9 +1,9 @@
 #!/bin/bash
 
-#SBATCH --job-name=fcomdiceFB30consensus            # Job name for the array
+#SBATCH --job-name=trueCiteseer-fcomdice            # Job name for the array
 #SBATCH --partition=gpu                 # Partition (queue) name
-#SBATCH --output=filename_%A_%a.txt      # Output file for stdout (%A: array job ID, %a: task ID)
-#SBATCH --error=filename_%A_%a.err       # Output file for stderr (%A: array job ID, %a: task ID)
+#SBATCH --output=logs/%x_%A_%a.out      # Output file for stdout (%A: array job ID, %a: task ID)
+#SBATCH --error=logs/%x_%A_%a.err       # Output file for stderr (%A: array job ID, %a: task ID)
 #SBATCH --mail-type=ALL                 # Email notification for job events
 #SBATCH --mail-user=dmanato@iu.edu      # Email address to receive notifications
 #SBATCH --nodes=1                       # Number of nodes
@@ -30,8 +30,9 @@ export OPENBLAS_NUM_THREADS=${SLURM_CPUS_PER_TASK}
 # export CUDA_LAUNCH_BLOCKING=1
 
 module purge
-module load python/gpu/3.11.5
-module load cudatoolkit/11.8
+# module load python/gpu/3.11.5 # not available any more on big red 
+# module load cudatoolkit/11.8
+module load python/gpu/3.10.10
 
 echo "[SLURM] JobID: $SLURM_JOB_ID  Node: $(hostname)"
 echo "[SLURM] NodeList: ${SLURM_NODELIST-}  SubmitDir: ${SLURM_SUBMIT_DIR-}"
@@ -48,12 +49,12 @@ if not torch.cuda.is_available(): raise SystemExit("No CUDA device visible to Py
 x = torch.randn(2,2, device='cuda'); print("CUDA tensor OK:", x.shape)
 PY
 
-# Go to your project
+# Go to project
 cd "$SLURM_SUBMIT_DIR/gnn-clustering-attack-defense"
 mkdir -p results_fcomdice_real_networks_consensus
 # pwd; ls -al
 
-# (Optional) prove imports won’t crash before your prints:
+# prove imports won’t crash before your prints:
 python - <<'PY'
 import sys
 print("Import smoke test start", flush=True)
@@ -63,6 +64,135 @@ PY
 
 echo "[SLURM] Launching run_experiments.py at $(date)"
 
+# Actor DICE true labels
+# srun --unbuffered --label python -u run_experiments_real_networks.py \
+#   --p_values 0.5 \
+#   --realizations 50 \
+#   --no-consensus \
+#   --network_name Actor \
+#   --outfile_csv results_dice_real_networks/dmon_dice_Actor.csv
+
+# Actor FComDICE true labels
+# srun --unbuffered --label python -u run_experiments_real_networks.py \
+#   --p_values 0.5 \
+#   --FComDICE \
+#   --no-consensus \
+#   --realizations 50 \
+#   --network_name Actor \
+#   --outfile_csv results_fcomdice_real_networks/dmon_fcomdice_Actor.csv
+
+
+# BlogCatalog DICE true labels
+# srun --unbuffered --label python -u run_experiments_real_networks.py \
+#   --p_values 0.5 \
+#   --realizations 25 \
+#   --no-consensus \
+#   --network_name BlogCatalog \
+#   --outfile_csv results_dice_real_networks/dmon_dice_BlogCatalog50.csv
+
+# BlogCatalog FComDICE true labels
+# srun --unbuffered --label python -u run_experiments_real_networks.py \
+#   --p_values 0.5 \
+#   --FComDICE \
+#   --no-consensus \
+#   --realizations 25 \
+#   --network_name BlogCatalog \
+#   --outfile_csv results_fcomdice_real_networks/dmon_fcomdice_BlogCatalog50.csv
+
+# Cora DICE true labels
+# srun --unbuffered --label python -u run_experiments_real_networks.py \
+#   --p_values 0.5 \
+#   --realizations 50 \
+#   --no-consensus \
+#   --network_name Cora \
+#   --outfile_csv results_dice_real_networks/dmon_dice_Cora.csv
+
+# Cora FComDICE true labels
+# srun --unbuffered --label python -u run_experiments_real_networks.py \
+#   --p_values 0.5 \
+#   --FComDICE \
+#   --no-consensus \
+#   --realizations 50 \
+#   --network_name Cora \
+#   --outfile_csv results_fcomdice_real_networks/dmon_fcomdice_Cora.csv
+
+# Citeseer DICE true labels
+# srun --unbuffered --label python -u run_experiments_real_networks.py \
+#   --p_values 0.5 \
+#   --realizations 50 \
+#   --no-consensus \
+#   --network_name Citeseer \
+#   --outfile_csv results_dice_real_networks/dmon_dice_Citeseer.csv
+
+# Citeseer FComDICE true labels
+srun --unbuffered --label python -u run_experiments_real_networks.py \
+  --p_values 0.5 \
+  --FComDICE \
+  --no-consensus \
+  --realizations 50 \
+  --network_name Citeseer \
+  --outfile_csv results_fcomdice_real_networks/dmon_fcomdice_Citeseer.csv
+
+# BitcoinTransactions DICE with consensus
+# srun --unbuffered --label python -u run_experiments_real_networks.py \
+#   --p_values 0.5 \
+#   --realizations 25 \
+#   --network_name BitcoinTransactions \
+#   --outfile_csv results_dice_real_networks_consensus/dmon_dice_BitcoinTransactions50.csv
+
+# BitcoinTransactions FComDICE with consensus
+# srun --unbuffered --label python -u run_experiments_real_networks.py \
+#   --p_values 0.5 \
+#   --FComDICE \
+#   --realizations 25 \
+#   --network_name BitcoinTransactions \
+#   --outfile_csv results_fcomdice_real_networks_consensus/dmon_fcomdice_BitcoinTransactions50.csv
+
+# Actor DICE with consensus
+# srun --unbuffered --label python -u run_experiments_real_networks.py \
+#   --p_values 0.5 \
+#   --realizations 50 \
+#   --network_name Actor \
+#   --outfile_csv results_dice_real_networks_consensus/dmon_dice_Actor.csv
+
+# Actor FComDICE with consensus
+# srun --unbuffered --label python -u run_experiments_real_networks.py \
+#   --p_values 0.5 \
+#   --FComDICE \
+#   --realizations 50 \
+#   --network_name Actor \
+#   --outfile_csv results_fcomdice_real_networks_consensus/dmon_fcomdice_Actor.csv
+
+
+# BlogCatalog DICE with consensus
+# srun --unbuffered --label python -u run_experiments_real_networks.py \
+#   --p_values 0.5 \
+#   --realizations 50 \
+#   --network_name BlogCatalog \
+#   --outfile_csv results_dice_real_networks_consensus/dmon_dice_BlogCatalog.csv
+
+# BlogCatalog FComDICE with consensus
+# srun --unbuffered --label python -u run_experiments_real_networks.py \
+#   --p_values 0.5 \
+#   --FComDICE \
+#   --realizations 50 \
+#   --network_name BlogCatalog \
+#   --outfile_csv results_fcomdice_real_networks_consensus/dmon_fcomdice_BlogCatalog.csv
+
+# BitcoinTransactions DICE with consensus
+# srun --unbuffered --label python -u run_experiments_real_networks.py \
+#   --p_values 0.5 \
+#   --realizations 25 \
+#   --network_name BitcoinTransactions \
+#   --outfile_csv results_dice_real_networks_consensus/dmon_dice_BitcoinTransactions50.csv
+
+# BitcoinTransactions FComDICE with consensus
+# srun --unbuffered --label python -u run_experiments_real_networks.py \
+#   --p_values 0.5 \
+#   --FComDICE \
+#   --realizations 25 \
+#   --network_name BitcoinTransactions \
+#   --outfile_csv results_fcomdice_real_networks_consensus/dmon_fcomdice_BitcoinTransactions50.csv
 
 # Facebook DICE with consensus
 # srun --unbuffered --label python -u run_experiments_real_networks.py \
@@ -73,15 +203,15 @@ echo "[SLURM] Launching run_experiments.py at $(date)"
 #   --network_name Facebook \
 #   --outfile_csv results_dice_real_networks_consensus/dmon_dice_FB30.csv
 
-# Facebook FComDICE with consensus
-srun --unbuffered --label python -u run_experiments_real_networks.py \
-  --p_values 0.5 \
-  --lr 0.01 \
-  --hidden 32 \
-  --FComDICE \
-  --realizations 15 \
-  --network_name Facebook \
-  --outfile_csv results_fcomdice_real_networks_consensus/dmon_fcomdice_FB30.csv
+# # Facebook FComDICE with consensus
+# srun --unbuffered --label python -u run_experiments_real_networks.py \
+#   --p_values 0.5 \
+#   --lr 0.01 \
+#   --hidden 32 \
+#   --FComDICE \
+#   --realizations 15 \
+#   --network_name Facebook \
+#   --outfile_csv results_fcomdice_real_networks_consensus/dmon_fcomdice_FB30.csv
 
 # Wiki DICE with consensus
 # srun --unbuffered --label python -u run_experiments_real_networks.py \
