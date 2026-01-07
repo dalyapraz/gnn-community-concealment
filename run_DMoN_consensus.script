@@ -1,6 +1,6 @@
 #!/bin/bash
-#SBATCH --job-name=dmon-consensus
-#SBATCH --partition=gpu-debug                 # Partition (queue) name
+#SBATCH --job-name=dmon-consensus-BTC
+#SBATCH --partition=gpu                 # Partition (queue) name
 #SBATCH --output=logs/%x_%A_%a.out
 #SBATCH --error=logs/%x_%A_%a.err
 #SBATCH --mail-type=ALL                 # Email notification for job events
@@ -9,7 +9,7 @@
 #SBATCH --ntasks-per-node=1             # Number of tasks per node
 #SBATCH --gpus-per-node=1
 #SBATCH --cpus-per-task=16              # Number of CPU cores per task
-#SBATCH --time=1:00:00                 # Wall clock time limit
+#SBATCH --time=1-00:00:00                 # Wall clock time limit
 #SBATCH --mem=100G                      # Memory limit per node
 #SBATCH -A r01712                       # Account (project) allocation
 #SBATCH --array=0                  # Number of tasks in the array (0 to 7, 8 tasks in total)
@@ -69,11 +69,21 @@ echo "[SLURM] Launching run_experiments.py at $(date)"
 # -----------------------------
 # Run DMoN consensus on real networks
 # -----------------------------
-srun --unbuffered --label python -u run_DMoN_consensus.py \
-  --name  lastfm_asia \
-  --k 24 \
+# srun --unbuffered --label python -u run_DMoN_consensus.py \
+#   --name  Wiki \
+#   --k 58 \
+#   --R 50 \
+#   --tau 0.3 0.4 0.5 \
+#   --reps 100 \
+#   --epochs 500 \
+#   --device cuda
+
+  srun --unbuffered --label python -u run_DMoN_consensus.py \
+  --name  BitcoinTransactions \
+  --k 38 \
   --R 50 \
-  --tau 0.3 \
+  --tau 0.6 0.7 0.8 \
   --reps 100 \
   --epochs 500 \
   --device cuda
+

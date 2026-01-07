@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #SBATCH --job-name=featurize_Wiki     # Job name for the array
-#SBATCH --partition=gpu-debug             # Partition (queue) name
+#SBATCH --partition=gpu-debug            # Partition (queue) name
 #SBATCH --output=logs/%x_%A_%a.out      # Output file for stdout (%A: array job ID, %a: task ID)
 #SBATCH --error=logs/%x_%A_%a.err       # Output file for stderr (%A: array job ID, %a: task ID)
 #SBATCH --mail-type=ALL                 # Email notification for job events
@@ -65,12 +65,25 @@ PY
 
 echo "[SLURM] Launching run_experiments.py at $(date)"
 
+# DICE on featurized Wiki 
+# srun --unbuffered --label python -u run_experiments_real_networks.py \
+#   --p_values 0.5 \
+#   --b_percentages 0.01 \
+#   --featurized \
+#   --featurized_sigma_c 1.0 \
+#   --realizations 1 \
+#   --network_name Wiki \
+#   --outfile_csv test_dice_Wiki_featurized.csv
+# status=$?
+# echo "[SLURM] run_experiments_real_networks.py exit code = $status"
+# exit $status
+
 # Wiki featurized based on louvain consensus
 srun --unbuffered --label python -u run_featurize_real_networks.py \
   --name Wiki \
   --R 50 \
   --tau 0.3 \
-  --sigma_c 1.0 \
+  --sigma_c 0.01 0.1 0.5 1.0 2.0 5.0 \
   --num_features 64 \
   --dir featurized_graphs/
 status=$?
@@ -90,6 +103,17 @@ exit $status
 # exit $status
 
 # lastfm DICE with consensus - runs into out of memory issue
+# srun --unbuffered --label python -u run_experiments_real_networks.py \
+#   --p_values 0.5 \
+#   --b_percentages 0.01 \
+#   --realizations 2 \
+#   --network_name lastfm_asia \
+#   --outfile_csv test_dice_lastfm_asia.csv
+# status=$?
+# echo "[SLURM] run_experiments_real_networks.py exit code = $status"
+# exit $status
+
+# DICE with consensus
 # srun --unbuffered --label python -u run_experiments_real_networks.py \
 #   --p_values 0.5 \
 #   --b_percentages 0.01 \

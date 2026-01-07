@@ -19,7 +19,7 @@ import csv
 import networkx as nx
 from lfr_generator import precompute_allpairs_neg_sqeuclidean, precompute_node_comm_neg_sqeuclidean
 import attacks
-from load_real_network import load_real_graph
+from load_real_network import load_featurized_graph,  load_real_graph
 from torch_geometric.utils import from_networkx
 import time
 
@@ -83,37 +83,45 @@ def main(args):
     # torch.manual_seed(args.seed)
 
     print(f"Loading real graph")
-    G, data, true_labels = load_real_graph(name=network_name)
+    if args.featurized: # if use featurized graphs -> true_labels are based on consensus louvain
+        folder_path = "featurized_graphs"
+        base_path = "featurized_" + network_name
+        G, data, true_labels = load_featurized_graph(folder_path, base_path, args.featurized_sigma_c)
+        print(f"Loaded featurized graph with sigma_c={args.featurized_sigma_c}")
+    else:
+        G, data, true_labels = load_real_graph(name=network_name)
+        if args.consensus: # use consensus labels from multiple DMoN runs before attack if features are original
+            folder = "real_graphs"
+            if args.consensus_labels_file is not None:
+                true_labels = np.load(os.path.join(folder, args.consensus_labels_file))
+            else:
+                true_labels = np.load(os.path.join(folder, f"final_labels_{network_name}_consensus.npy"))
+            true_labels = true_labels.astype(int)
+            print("Loaded DMoN consensus", len(true_labels), "labels and", len(np.unique(true_labels)), "communities.")
     dim_features = data.x.shape[1]
     print(f"Number of nodes: {data.num_nodes}, Number of edges: {data.num_edges}, Feature dimension: {dim_features}")
-    # we actually want consensus labels from multiple runs of DMoN before attack
-    # load final labels from file
-    if args.consensus: # use consensus labels from multiple DMoN runs before attack
-        true_labels = np.load(f"real_graphs/final_labels_{network_name}_consensus.npy")
-        true_labels = true_labels.astype(int)
-        print("Loaded", len(true_labels), "labels and", len(np.unique(true_labels)), "communities.")
     # Precompute pairwise similarities for feature-based attacks
     _, S_nc = precompute_node_comm_neg_sqeuclidean(G, true_labels)
     # === Save graph and membership ===
-    base_name = f"graph_{network_name}"
-    graph_file = os.path.join(results_dir, base_name + ".edgelist")
-    membership_file = os.path.join(results_dir, base_name + ".membership")
+    # base_name = f"graph_{network_name}"
+    # graph_file = os.path.join(results_dir, base_name + ".edgelist")
+    # membership_file = os.path.join(results_dir, base_name + ".membership")
     # Save the graph as an edge list
-    nx.write_edgelist(G, graph_file, delimiter=' ', data=False)
+    # nx.write_edgelist(G, graph_file, delimiter=' ', data=False)
     # Save the membership as a 1D array (each line: community ID)
-    np.savetxt(membership_file, true_labels, delimiter=' ', fmt='%d')
-    features_file = os.path.join(results_dir, base_name + ".features")
-    with open(features_file, "w", newline="") as f:
-        writer = csv.writer(f, delimiter=' ')
-        for node, node_data in G.nodes(data=True):
-            # Ensure feature is NumPy array of floats
-            x = node_data['x']
-            if isinstance(x, torch.Tensor):
-                x = x.detach().cpu().numpy()
-            row = [node] + list(map(float, x))
-            writer.writerow(row)
+    # np.savetxt(membership_file, true_labels, delimiter=' ', fmt='%d')
+    # features_file = os.path.join(results_dir, base_name + ".features")
+    # with open(features_file, "w", newline="") as f:
+    #     writer = csv.writer(f, delimiter=' ')
+    #     for node, node_data in G.nodes(data=True):
+    #         # Ensure feature is NumPy array of floats
+    #         x = node_data['x']
+    #         if isinstance(x, torch.Tensor):
+    #             x = x.detach().cpu().numpy()
+    #         row = [node] + list(map(float, x))
+    #         writer.writerow(row)
 
-    print(f"Generated and saved graph with {G.number_of_nodes()} nodes and {G.number_of_edges()} edges")
+    # print(f"Generated and saved graph with {G.number_of_nodes()} nodes and {G.number_of_edges()} edges")
 
     number_of_communities = len(set(true_labels))
     print(f"Number of communities: {number_of_communities}")
@@ -187,7 +195,10 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run DMoN + DICE real network experiments")
     parser.add_argument("--network_name", type=str, default="Wiki")
+    parser.add_argument("--featurized", action=argparse.BooleanOptionalAction, default=False, help="Use featurized graph")
+    parser.add_argument("--featurized_sigma_c", type=float, default=1.0, help="Sigma_c value for featurized graph")
     parser.add_argument("--consensus", action=argparse.BooleanOptionalAction, default=True, help="Use consensus labels from multiple DMoN runs before attack")
+    parser.add_argument("--consensus_labels_file", type=str, default=None)
     parser.add_argument("--hidden", type=int, default=64)
     parser.add_argument("--num_layers", type=int, default=2)
     parser.add_argument("--epochs", type=int, default=200)

@@ -82,7 +82,7 @@ def load_snap_graph(folder):
 
     # --- Build networkx graph ---
     G = nx.from_scipy_sparse_array(A)
-    
+
     # --- add node features as attribute 'x' ---
     for i, x_i in enumerate(x):
         G.nodes[i]['x'] = x_i
@@ -214,6 +214,59 @@ def load_real_graph(
         true_labels = true_labels[list(largest_cc)]
 
     return G, data, true_labels
+
+import torch
+import networkx as nx
+from torch_geometric.data import Data
+
+def load_featurized_graph(folder_path, base_path, featurized_sigma_c):
+
+    # Load true labels
+    membership_path = f"{folder_path}/{base_path}.membership"
+    true_labels = np.loadtxt(membership_path, dtype=int)
+    n = len(true_labels)
+    print(f"Loaded true labels with shape {true_labels.shape}")
+
+    # Load features
+    features_path = f"{folder_path}/{base_path}_{featurized_sigma_c}.features"
+    x = torch.load(features_path, map_location="cpu")
+    print(f"Loaded features with shape {x.shape}")
+
+    # check consistency
+    assert len(true_labels) == n, \
+        f"Labels length {len(true_labels)} != num nodes {n}"
+
+    # Load structure
+    edgelist_path = f"{folder_path}/{base_path}.edgelist"
+    G = nx.read_edgelist(edgelist_path, nodetype=int)
+    print(f"Loaded graph with {G.number_of_nodes()} nodes and {G.number_of_edges()} edges")
+    # G = nx.convert_node_labels_to_integers(G)
+
+    # adding isolated nodes if any
+    G.add_nodes_from(range(n))
+    # add node features as attribute 'x'
+    for i, feat in enumerate(x):
+        G.nodes[i]['x'] = feat
+
+
+    # Checks
+    assert set(G.nodes()) == set(range(n)), \
+        "Graph node IDs do not match feature/label indices"
+
+    # Build edge_index
+    edges = torch.tensor(list(G.edges()), dtype=torch.long).t().contiguous()
+    edge_index = torch.cat([edges, edges.flip(0)], dim=1)
+
+
+    data = Data(
+        x=x,
+        edge_index=edge_index,
+        y = torch.tensor(true_labels, dtype=torch.long),
+        num_nodes=n
+    )
+
+    return G, data, true_labels
+
 
 
 # import os

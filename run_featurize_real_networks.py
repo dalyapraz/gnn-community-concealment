@@ -11,7 +11,6 @@ Usage (example):
 Author: Dalya Manatova with assistance from Copilot (GPT-5)
 """
 
-from pyexpat import features
 import argparse, time, os, numpy as np, torch, networkx as nx
 from load_real_network import load_real_graph
 from lfr_generator import generate_features_from_communities
@@ -46,30 +45,34 @@ def main():
     p.add_argument('--name', type=str, required=True, help='Name of the dataset')
     p.add_argument('--R', type=int, default=50, help='Number of consensus runs')
     p.add_argument('--tau', type=float, default=0.3, help='Threshold for consensus labels')
-    p.add_argument('--sigma_c', type=float, default=1.0, help='Sigma parameter for Gaussian features')
+    p.add_argument('--sigma_c', nargs="+", type=float, default=[0.01, 0.1, 0.5, 1.0, 2.0, 5.0], help='Sigma_c parameters for Gaussian features')
     p.add_argument('--num_features', type=int, default=64, help='Number of features to generate')
     p.add_argument('--dir', type=str, required=True, help='Output directory')
     args = p.parse_args()
 
     G, data, true_labels = load_real_graph(name=args.name)
     CC_labels = consensus_clustering_louvain(G, R=args.R, tau=args.tau)
-    G, data = featurize_from_consensus_labels(G, CC_labels, num_features=args.num_features, sigma_c=args.sigma_c)
 
     # ---- Save graph and membership -----
     base_name = f"featurized_{args.name}"
     graph_file = os.path.join(args.dir, base_name + ".edgelist")
     membership_file = os.path.join(args.dir, base_name + ".membership")
-    features_file = os.path.join(args.dir, base_name + f"_{args.sigma_c}.features")
-
-   # Save edge list (structure)
+    # Save edge list (structure)
     nx.write_edgelist(G, graph_file, delimiter=' ', data=False)
 
     # Save consensus labels
     np.savetxt(membership_file, CC_labels, fmt='%d')
 
-    # Save the features as torch tensors
-    torch.save(data.x, features_file)
-    print(f"Saved graph data to {graph_file, membership_file, features_file}")
+    features_files = []
+    # ---- Featurize based on consensus labels -----
+    for sigma_c in args.sigma_c:
+        G, data = featurize_from_consensus_labels(G, CC_labels, num_features=args.num_features, sigma_c=sigma_c)
+        features_file = os.path.join(args.dir, base_name + f"_{sigma_c}.features")
+        # Save the features as torch tensors
+        torch.save(data.x, features_file)
+        features_files.append(features_file)
+    
+    print(f"Saved graph data to {graph_file, membership_file, features_files}")
 
 if __name__ == "__main__":
     main()
