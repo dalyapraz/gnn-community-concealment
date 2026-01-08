@@ -520,7 +520,7 @@ def compute_diff_feature_clust_vs_labels(X, y):
 #     return r_obs, pval
 
 
-def mantel_embedding_correlation(G, X, d=32, nperm=499, seed=0):
+def mantel_embedding_correlation(G, X, d=32, nperm=499, seed=0, distance_method='euclidean'):
     # --- structural embedding: node2vec ---
     n2v = Node2Vec(
         G,
@@ -538,8 +538,8 @@ def mantel_embedding_correlation(G, X, d=32, nperm=499, seed=0):
     Z_feat = PCA(n_components=d, random_state=seed).fit_transform(X_mat)
 
     # --- pairwise distances (condensed form!) ---
-    v1 = pdist(Z_struct)   # length = n(n-1)/2
-    v2 = pdist(Z_feat)
+    v1 = pdist(Z_struct, metric=distance_method)   # length = n(n-1)/2
+    v2 = pdist(Z_feat, metric=distance_method)
 
     # --- rank once (Spearman) ---
     r1 = rankdata(v1)
@@ -555,7 +555,7 @@ def mantel_embedding_correlation(G, X, d=32, nperm=499, seed=0):
 
     for _ in range(nperm):
         perm = rng.permutation(n)
-        v2p = pdist(Z_feat[perm])
+        v2p = pdist(Z_feat[perm], metric=distance_method)
         r2p = rankdata(v2p)
         r_perm = np.corrcoef(r1, r2p)[0, 1]
 
