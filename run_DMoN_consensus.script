@@ -82,7 +82,7 @@ echo "[SLURM] Launching run_experiments.py at $(date)"
   --name  BitcoinTransactions \
   --k 38 \
   --R 50 \
-  --tau 0.6 0.7 0.8 \
+  --tau 0.7 0.8 \
   --reps 100 \
   --epochs 500 \
   --device cuda

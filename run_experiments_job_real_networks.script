@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name=featurized_Wiki5_DICE           # Job name for the array
+#SBATCH --job-name=featurized_BTC0.01_FcomDICE           # Job name for the array
 #SBATCH --partition=gpu                 # Partition (queue) name
 #SBATCH --output=logs/%x_%A_%a.out      # Output file for stdout (%A: array job ID, %a: task ID)
 #SBATCH --error=logs/%x_%A_%a.err       # Output file for stderr (%A: array job ID, %a: task ID)
@@ -242,20 +242,20 @@ echo "[SLURM] Launching run_experiments.py at $(date)"
 #   --outfile_csv dmon_fdice_0.4_mincomm_10_sigma5_p0.95_featconnecting_node.csv
 
 # Wiki featurized on louvain consensus DICE
-srun --unbuffered --label python -u run_experiments_real_networks.py \
-  --p_values 0.5 \
-  --featurized \
-  --featurized_sigma_c 5.0 \
-  --realizations 50 \
-  --network_name Wiki \
-  --outfile_csv results_dice_real_networks_featurized/dmon_dice_sigma5.0_Wiki.csv
-
-  # Wiki featurized on louvain consensus FComDICE
 # srun --unbuffered --label python -u run_experiments_real_networks.py \
 #   --p_values 0.5 \
 #   --featurized \
 #   --featurized_sigma_c 5.0 \
-#   --FComDICE \
-#   --realizations 50 \
-#   --network_name Wiki \
-#   --outfile_csv results_fcomdice_real_networks_featurized/dmon_fcomdice_sigma5.0_Wiki.csv
+#   --realizations 10 \
+#   --network_name BitcoinTransactions \
+#   --outfile_csv results_dice_real_networks_featurized/dmon_dice_sigma5.0_BTC50.csv
+
+  # Wiki featurized on louvain consensus FComDICE
+srun --unbuffered --label python -u run_experiments_real_networks.py \
+  --p_values 0.5 \
+  --featurized \
+  --featurized_sigma_c 0.01 \
+  --FComDICE \
+  --realizations 10 \
+  --network_name BitcoinTransactions \
+  --outfile_csv results_fcomdice_real_networks_featurized/dmon_fcomdice_sigma0.01_BTC50.csv
