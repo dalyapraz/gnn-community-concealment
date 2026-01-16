@@ -93,11 +93,14 @@ def main(args):
         if args.consensus: # use consensus labels from multiple DMoN runs before attack if features are original
             folder = "real_graphs"
             if args.consensus_labels_file is not None:
-                true_labels = np.load(os.path.join(folder, args.consensus_labels_file))
+                if args.consensus_labels_file.endswith(".npy"):
+                    true_labels = np.load(os.path.join(folder, args.consensus_labels_file))
+                elif args.consensus_labels_file.endswith(".membership"):
+                    true_labels = np.loadtxt(os.path.join(folder, args.consensus_labels_file), dtype=int)
             else:
                 true_labels = np.load(os.path.join(folder, f"final_labels_{network_name}_consensus.npy"))
             true_labels = true_labels.astype(int)
-            print("Loaded DMoN consensus", len(true_labels), "labels and", len(np.unique(true_labels)), "communities.")
+            print("Loaded consensus", len(true_labels), "labels and", len(np.unique(true_labels)), "communities.")
     dim_features = data.x.shape[1]
     print(f"Number of nodes: {data.num_nodes}, Number of edges: {data.num_edges}, Feature dimension: {dim_features}")
     # Precompute pairwise similarities for feature-based attacks

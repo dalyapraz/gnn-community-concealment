@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name=featurized_Facebook    # Job name for the array
+#SBATCH --job-name=consensus_BitcoinTransactions    # Job name for the array
 #SBATCH --partition=gpu-debug            # Partition (queue) name
 #SBATCH --output=logs/%x_%A_%a.out      # Output file for stdout (%A: array job ID, %a: task ID)
 #SBATCH --error=logs/%x_%A_%a.err       # Output file for stderr (%A: array job ID, %a: task ID)
@@ -65,18 +65,32 @@ PY
 
 echo "[SLURM] Launching run_experiments_real_networks.py at $(date)"
 
-# DICE on featurized Facebook 
+# DICE on  BitcoinTransactions with consensus Louvain true labels
 srun --unbuffered --label python -u run_experiments_real_networks.py \
   --p_values 0.5 \
   --b_percentages 0.01 \
-  --featurized \
-  --featurized_sigma_c 1.0 \
   --realizations 1 \
+  --consensus \
+  --consensus_labels_file BitcoinTransactions_consensus_louvain.membership \
   --network_name BitcoinTransactions \
-  --outfile_csv test_dice_BitcoinTransactions_featurized.csv
+  --outfile_csv test_dice_BitcoinTransactions_consensus_louvain.csv
 status=$?
 echo "[SLURM] run_experiments_real_networks.py exit code = $status"
 exit $status
+
+
+# DICE on featurized Facebook 
+# srun --unbuffered --label python -u run_experiments_real_networks.py \
+#   --p_values 0.5 \
+#   --b_percentages 0.01 \
+#   --featurized \
+#   --featurized_sigma_c 1.0 \
+#   --realizations 1 \
+#   --network_name BitcoinTransactions \
+#   --outfile_csv test_dice_BitcoinTransactions_featurized.csv
+# status=$?
+# echo "[SLURM] run_experiments_real_networks.py exit code = $status"
+# exit $status
 
 
 # DICE on featurized Wiki 

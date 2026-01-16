@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name=featurized_BTC0.01_FcomDICE           # Job name for the array
+#SBATCH --job-name=louvain_Wiki_FComDICE           # Job name for the array
 #SBATCH --partition=gpu                 # Partition (queue) name
 #SBATCH --output=logs/%x_%A_%a.out      # Output file for stdout (%A: array job ID, %a: task ID)
 #SBATCH --error=logs/%x_%A_%a.err       # Output file for stderr (%A: array job ID, %a: task ID)
@@ -51,8 +51,8 @@ PY
 
 # Go to project
 cd "$SLURM_SUBMIT_DIR/gnn-clustering-attack-defense"
-mkdir -p results_dice_real_networks_featurized
-mkdir -p results_fcomdice_real_networks_featurized
+mkdir -p results_dice_real_networks_louvain
+mkdir -p results_fcomdice_real_networks_louvain
 # pwd; ls -al
 
 # prove imports won’t crash before your prints:
@@ -251,11 +251,55 @@ echo "[SLURM] Launching run_experiments.py at $(date)"
 #   --outfile_csv results_dice_real_networks_featurized/dmon_dice_sigma5.0_BTC50.csv
 
   # Wiki featurized on louvain consensus FComDICE
-srun --unbuffered --label python -u run_experiments_real_networks.py \
+# srun --unbuffered --label python -u run_experiments_real_networks.py \
+#   --p_values 0.5 \
+#   --featurized \
+#   --featurized_sigma_c 0.01 \
+#   --FComDICE \
+#   --realizations 10 \
+#   --network_name BitcoinTransactions \
+#   --outfile_csv results_fcomdice_real_networks_featurized/dmon_fcomdice_sigma0.01_BTC50.csv
+
+
+# DICE on  BitcoinTransactions with consensus Louvain true labels
+# srun --unbuffered --label python -u run_experiments_real_networks.py \
+#   --p_values 0.5 \
+#   --realizations 10 \
+#   --consensus \
+#   --consensus_labels_file BitcoinTransactions_consensus_louvain.membership \
+#   --network_name BitcoinTransactions \
+#   --outfile_csv results_dice_real_networks_louvain/dmon_dice_BTC50.csv
+
+  # srun --unbuffered --label python -u run_experiments_real_networks.py \
+  # --p_values 0.5 \
+  # --realizations 25 \
+  # --consensus \
+  # --consensus_labels_file Facebook_consensus_louvain.membership \
+  # --network_name Facebook \
+  # --outfile_csv results_dice_real_networks_louvain/dmon_dice_FB50.csv
+
+  # srun --unbuffered --label python -u run_experiments_real_networks.py \
+  # --p_values 0.5 \
+  # --realizations 25 \
+  # --consensus \
+  # --consensus_labels_file Facebook_consensus_louvain.membership \
+  # --FComDICE \
+  # --network_name Facebook \
+  # --outfile_csv results_fcomdice_real_networks_louvain/dmon_fcomdice_FB50.csv
+
+  # srun --unbuffered --label python -u run_experiments_real_networks.py \
+  # --p_values 0.5 \
+  # --realizations 50 \
+  # --consensus \
+  # --consensus_labels_file Wiki_consensus_louvain.membership \
+  # --network_name Wiki \
+  # --outfile_csv results_dice_real_networks_louvain/dmon_dice_Wiki.csv
+
+  srun --unbuffered --label python -u run_experiments_real_networks.py \
   --p_values 0.5 \
-  --featurized \
-  --featurized_sigma_c 0.01 \
+  --realizations 50 \
+  --consensus \
+  --consensus_labels_file Wiki_consensus_louvain.membership \
   --FComDICE \
-  --realizations 10 \
-  --network_name BitcoinTransactions \
-  --outfile_csv results_fcomdice_real_networks_featurized/dmon_fcomdice_sigma0.01_BTC50.csv
+  --network_name Wiki \
+  --outfile_csv results_fcomdice_real_networks_louvain/dmon_fcomdice_Wiki.csv
