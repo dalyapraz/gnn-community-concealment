@@ -52,12 +52,12 @@ def dice_community_attack(G, target_comm, b, p=0.5, seed=None):
     return G
 
 
-def dice_cfeature_comm_attack(
+def fcom_dice_community_attack(
     G, target_comm, true_labels, S_nc, b, p=0.5, *, seed=None,
-    feature_mode = None  # options: None, 'connecting_node', 'average_community'
+    feature_mode = 'average_community' # options: None, 'connecting_node', 'average_community'
 ):
     """
-    Modified DICE attack:
+    FCom-DICE attack:
     - Removes intra-community edges
     - Adds edges from src node u to the random node v from the most similar community. Uses a fixed NEG-sq-Euclidean similarity matrix S_nc (N×C)
     - Optionally modifies features of target node u based on connection to new node v or closest community average

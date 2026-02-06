@@ -1,0 +1,12 @@
+mu=0.01 sigma_c="0.01 0.1 0.5 1 2 5" minc=10 seed=42 pvals="0.8" feature=connecting_node outfile=dmon_fcomdice_0.01_mincomm_10_sigmaAll_p0.8_featconnecting_node.csv
+mu=0.01 sigma_c="0.01 0.1 0.5 1 2 5" minc=10 seed=42 pvals="0.8" feature=average_community outfile=dmon_fcomdice_0.01_mincomm_10_sigmaAll_p0.8_feataverage_community.csv
+mu=0.1 sigma_c="0.01 0.1 0.5 1 2 5" minc=10 seed=42 pvals="0.8" feature=connecting_node outfile=dmon_fcomdice_0.1_mincomm_10_sigmaAll_p0.8_featconnecting_node.csv
+mu=0.1 sigma_c="0.01 0.1 0.5 1 2 5" minc=10 seed=42 pvals="0.8" feature=average_community outfile=dmon_fcomdice_0.1_mincomm_10_sigmaAll_p0.8_feataverage_community.csv
+mu=0.2 sigma_c="0.01 0.1 0.5 1 2 5" minc=10 seed=42 pvals="0.8" feature=connecting_node outfile=dmon_fcomdice_0.2_mincomm_10_sigmaAll_p0.8_featconnecting_node.csv
+mu=0.2 sigma_c="0.01 0.1 0.5 1 2 5" minc=10 seed=42 pvals="0.8" feature=average_community outfile=dmon_fcomdice_0.2_mincomm_10_sigmaAll_p0.8_feataverage_community.csv
+mu=0.3 sigma_c="0.01 0.1 0.5 1 2 5" minc=10 seed=42 pvals="0.8" feature=connecting_node outfile=dmon_fcomdice_0.3_mincomm_10_sigmaAll_p0.8_featconnecting_node.csv
+mu=0.3 sigma_c="0.01 0.1 0.5 1 2 5" minc=10 seed=42 pvals="0.8" feature=average_community outfile=dmon_fcomdice_0.3_mincomm_10_sigmaAll_p0.8_feataverage_community.csv
+mu=0.4 sigma_c="0.01 0.1 0.5 1 2 5" minc=10 seed=42 pvals="0.8" feature=connecting_node outfile=dmon_fcomdice_0.4_mincomm_10_sigmaAll_p0.8_featconnecting_node.csv
+mu=0.4 sigma_c="0.01 0.1 0.5 1 2 5" minc=10 seed=42 pvals="0.8" feature=average_community outfile=dmon_fcomdice_0.4_mincomm_10_sigmaAll_p0.8_feataverage_community.csv
+mu=0.5 sigma_c="0.01 0.1 0.5 1 2 5" minc=10 seed=42 pvals="0.8" feature=connecting_node outfile=dmon_fcomdice_0.5_mincomm_10_sigmaAll_p0.8_featconnecting_node.csv
+mu=0.5 sigma_c="0.01 0.1 0.5 1 2 5" minc=10 seed=42 pvals="0.8" feature=average_community outfile=dmon_fcomdice_0.5_mincomm_10_sigmaAll_p0.8_feataverage_community.csv

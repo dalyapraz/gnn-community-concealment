@@ -1,0 +1,89 @@
+#!/bin/bash
+#SBATCH --job-name=dmon-consensus-BTC
+#SBATCH --partition=gpu                 # Partition (queue) name
+#SBATCH --output=logs/%x_%A_%a.out
+#SBATCH --error=logs/%x_%A_%a.err
+#SBATCH --mail-type=ALL                 # Email notification for job events
+#SBATCH --mail-user=dmanato@iu.edu      # Email address to receive notifications
+#SBATCH --nodes=1                       # Number of nodes
+#SBATCH --ntasks-per-node=1             # Number of tasks per node
+#SBATCH --gpus-per-node=1
+#SBATCH --cpus-per-task=16              # Number of CPU cores per task
+#SBATCH --time=1-00:00:00                 # Wall clock time limit
+#SBATCH --mem=100G                      # Memory limit per node
+#SBATCH -A r01712                       # Account (project) allocation
+#SBATCH --array=0                  # Number of tasks in the array (0 to 7, 8 tasks in total)
+
+
+
+set -euo pipefail
+set -x   # trace commands
+
+mkdir -p logs
+
+# Make Python chatty & unbuffered
+export PYTHONUNBUFFERED=1
+export PYTHONFAULTHANDLER=1
+export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK}
+export MKL_NUM_THREADS=${SLURM_CPUS_PER_TASK}
+export OPENBLAS_NUM_THREADS=${SLURM_CPUS_PER_TASK}
+
+# export CUDA_LAUNCH_BLOCKING=1
+
+
+module purge
+module load python/gpu/3.10.10
+# module load cudatoolkit/11.7
+
+echo "[SLURM] JobID: $SLURM_JOB_ID  Node: $(hostname)"
+echo "[SLURM] NodeList: ${SLURM_NODELIST-}  SubmitDir: ${SLURM_SUBMIT_DIR-}"
+
+# Preflight GPU
+python - <<'PY' || { echo "Preflight CUDA test failed"; exit 1; }
+import os, torch
+print("torch.__version__ =", torch.__version__)
+print("torch.version.cuda =", torch.version.cuda)
+print("is_available =", torch.cuda.is_available())
+print("device_count =", torch.cuda.device_count())
+print("CUDA_VISIBLE_DEVICES =", os.environ.get("CUDA_VISIBLE_DEVICES"))
+if not torch.cuda.is_available(): raise SystemExit("No CUDA device visible to PyTorch.")
+x = torch.randn(2,2, device='cuda'); print("CUDA tensor OK:", x.shape)
+PY
+
+# Go to project
+cd "$SLURM_SUBMIT_DIR/gnn-clustering-attack-defense"
+# pwd; ls -al
+
+# prove imports won’t crash before your prints:
+python - <<'PY'
+import sys
+print("Import smoke test start", flush=True)
+import attacks, dmon, torch_geometric
+print("Imports OK", flush=True)
+PY
+
+echo "[SLURM] Launching run_experiments.py at $(date)"
+
+
+
+# -----------------------------
+# Run DMoN consensus on real networks
+# -----------------------------
+# srun --unbuffered --label python -u run_DMoN_consensus.py \
+#   --name  Wiki \
+#   --k 58 \
+#   --R 50 \
+#   --tau 0.3 0.4 0.5 \
+#   --reps 100 \
+#   --epochs 500 \
+#   --device cuda
+
+  srun --unbuffered --label python -u run_DMoN_consensus.py \
+  --name  BitcoinTransactions \
+  --k 38 \
+  --R 50 \
+  --tau 0.7 0.8 \
+  --reps 100 \
+  --epochs 500 \
+  --device cuda
+

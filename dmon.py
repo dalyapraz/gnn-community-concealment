@@ -230,10 +230,7 @@ class DMoN(torch.nn.Module):
                     self.convs.append(GCNConv(hidden_channels, hidden_channels, add_self_loops=False))
         
         self.pool = DMoNPooling([hidden_channels, hidden_channels], num_clusters, dropout=dropout)
-        # paper uses 1 layer only
-        # self.conv2 = DenseGCNConv(hidden_channels, hidden_channels) 
-        # self.pool2 = DMoNPooling([hidden_channels, hidden_channels], num_clusters)
-        
+
     def forward(self, x, edge_index):
         # Apply all GCN layers
         for i, conv in enumerate(self.convs):

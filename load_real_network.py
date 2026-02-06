@@ -99,7 +99,7 @@ def load_real_graph(
     in the SAME format as `generate_featurized_lfr_graph` returns.
 
     Parameters
-    - name: dataset name (e.g., 'Cora', 'Cora_ML', etc.)
+    - name: dataset name (e.g., 'Cora', 'Wiki' etc.)
     - root: optional root folder for dataset cache; defaults to ~/pyg_data/<source>
 
     Returns
@@ -112,27 +112,10 @@ def load_real_graph(
     # --- Choose dataset root ---
     if root is None:
         root = os.path.expanduser(os.path.join("~", "pyg_data", name_clean))
-    if name_clean in ["cora", "citeseer", "pubmed", "wiki", "facebook", "blogcatalog", "flickr"]:
+    if name_clean in ["cora", "citeseer", "pubmed", "wiki", "facebook"]:
         dataset = AttributedGraphDataset(root=root, name=name, transform=transform)
     elif name_clean in ['bitcointransactions']:
         dataset = EllipticBitcoinDataset(root=root, transform=transform)
-    elif name_clean in ["lastfmasia"]:
-        return load_snap_graph("lasftm_asia")
-    elif name_clean in ["deezer_europe", "lastfm_asia"]:
-        return load_snap_graph(name_clean)
-    
-    # elif name_clean in ["github"]: 
-    #     dataset = GitHub(root=root, transform=transform) # doesn't exist (404 error)
-    # elif name_clean in ["lastfmasia"]:
-    #     dataset = LastFMAsia(root=root, transform=transform)
-    elif name_clean in ["actor"]:
-        dataset = Actor(root=root, transform=transform)
-    # elif name_clean in ["reddit2"]:   # too large
-    #     dataset = Reddit2(root=root, transform=transform)
-    # elif name_clean in ["twitch"]:
-    #     dataset = Twitch(root=root, name = "EN", transform=transform)
-    # elif name_clean in ["gemsecdeezer"]:
-    #     dataset = GemsecDeezer(root=root, name = "RO", transform=transform)
     else:
         raise ValueError(f"Unsupported dataset name '{name}'. Add it to the loader.")
 
@@ -266,121 +249,3 @@ def load_featurized_graph(folder_path, base_path, featurized_sigma_c):
     )
 
     return G, data, true_labels
-
-
-
-# import os
-# import numpy as np
-# import torch
-# import networkx as nx
-# from torch_geometric.utils import to_networkx
-# import torch_geometric.transforms as T
-
-# # PyG datasets
-# from torch_geometric.datasets import (
-#     AttributedGraphDataset,
-#     CitationFull,
-#     GitHub,
-#     HeterophilousGraphDataset,  # includes LastFMAsia, Actor
-# )
-
-# def load_real_graph(name: str, root=None):
-#     """
-#     Unified loader for multiple PyG graph datasets.
-#     Returns (G, data, true_labels):
-#         G = networkx.Graph with node feature 'x' (torch.Tensor)
-#         data = PyG Data object
-#         true_labels = np.ndarray of shape [num_nodes]
-#     """
-
-#     name_clean = name.lower().strip()
-
-#     # -----------------------------
-#     # Decide dataset root
-#     # -----------------------------
-#     if root is None:
-#         root = os.path.expanduser(os.path.join("~", "pyg_data", name_clean))
-
-#     # -----------------------------
-#     # Standard transforms
-#     # -----------------------------
-#     transform = T.Compose([
-#         T.ToUndirected(),
-#         T.RemoveSelfLoops(),
-#         T.RemoveDuplicatedEdges()
-#     ])
-
-#     # -----------------------------
-#     # Dataset dispatch
-#     # -----------------------------
-#     if name_clean in ["cora", "citeseer", "pubmed", "wiki", "facebook"]:
-#         # your old behavior
-#         dataset = AttributedGraphDataset(root=root, name=name, transform=transform)
-
-#     elif name_clean in ["cora_full"]:
-#         dataset = CitationFull(root=root, name="Cora", transform=transform)
-
-#     elif name_clean in ["github"]:
-#         dataset = GitHub(root=root, transform=transform)
-
-#     elif name_clean in ["lastfmasia", "lastfm", "actor", "minesweeper", "roman-empire",
-#                         "questions", "amazon-ratings", "tolokers"]:
-#         # All are inside HeterophilousGraphDataset
-#         dataset = HeterophilousGraphDataset(root=root, name=name_clean, transform=transform)
-
-#     else:
-#         raise ValueError(f"Unsupported dataset name '{name}'. Add it to the loader.")
-
-#     # -----------------------------
-#     # Validate dataset
-#     # -----------------------------
-#     if len(dataset) == 0:
-#         raise RuntimeError(f"Loaded empty dataset: name={name}, root={root}")
-
-#     # PyG Data object
-#     data = dataset[0]
-#     data = transform(data)   # ensure safety
-
-#     # -----------------------------
-#     # Convert to NetworkX graph
-#     # -----------------------------
-#     # include node features "x" if present
-#     node_attrs = ["x"] if hasattr(data, "x") else []
-#     G = to_networkx(data, to_undirected=True, node_attrs=node_attrs)
-
-#     # remove remaining self-loops
-#     G.remove_edges_from(nx.selfloop_edges(G))
-
-#     # -----------------------------
-#     # Ensure each node has a tensor feature
-#     # -----------------------------
-#     if hasattr(data, "x") and data.x is not None:
-#         for n in G.nodes():
-#             x = G.nodes[n].get("x")
-#             if x is None:
-#                 G.nodes[n]["x"] = data.x[n].detach() if torch.is_tensor(data.x) else torch.tensor(data.x[n])
-#             elif not torch.is_tensor(x):
-#                 G.nodes[n]["x"] = torch.tensor(x, dtype=torch.float32)
-#     else:
-#         # Some heterophilous datasets (like Actor) have no x → create dummy features
-#         print(f"[Warning] Dataset '{name}' has no node features. Creating identity features.")
-#         N = G.number_of_nodes()
-#         X = torch.eye(N)
-#         data.x = X
-#         for n in G.nodes():
-#             G.nodes[n]["x"] = X[n]
-
-#     # -----------------------------
-#     # Extract labels (data.y)
-#     # -----------------------------
-#     if hasattr(data, "y") and data.y is not None:
-#         y = data.y
-#         if torch.is_tensor(y):
-#             y = y.cpu().numpy()
-#         y = np.asarray(y).reshape(-1).astype(int)
-#         true_labels = y
-#     else:
-#         print(f"[Warning] Dataset '{name}' has no labels (data.y). Creating dummy zero labels.")
-#         true_labels = np.zeros(data.num_nodes, dtype=int)
-
-#     return G, data, true_labels

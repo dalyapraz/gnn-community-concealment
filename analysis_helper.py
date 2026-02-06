@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from collections.abc import Sequence
 
 def plot_metric_changes(
+
     df: pd.DataFrame,
     metrics,
     mode: str = "grid",             # "grid" | "fixed_mu" | "fixed_sigma"
@@ -19,6 +20,13 @@ def plot_metric_changes(
     figsize_per_plot=7,             # size for each square subplot
     ylim=None                       # tuple for all, or dict per metric
 ):
+    """
+    For each metric, compute the average rate of change across b_percentage for each (mu, sigma_c) pair.
+    Then plot these average rates of change:
+      - If mode="grid": x-axis=mu, line per sigma_c, one subplot per metric
+      - If mode="fixed_mu": x-axis=mu, one line (avg over sigma_c), one subplot per metric
+      - If mode="fixed_sigma": x-axis=sigma_c, one line (avg over mu), one subplot per metric
+    """
     # --- Filter baseline p if given ---
     d = df.copy()
     if baseline_p is not None:
@@ -1895,3 +1903,178 @@ def plot_relative_change_real_networks_sigma_heatmaps_multiple_methods(
     plt.show()
 
     return rel_df, limits
+
+
+#------------------------------------
+# Statistical tests helpers
+#------------------------------------
+
+from sklearn.metrics import auc
+import test
+
+def compute_auc_distribution(df, sigma_c):
+    m1auc_values = []
+    m2auc_values = []
+    # filter where b != 0
+    filtered_df = df[(df['sigma_c'] == sigma_c) & (df['b_percentage'] != 0)]
+    grouped = filtered_df.groupby(['realization', 'target_label', 'target_size', 'mu'])
+    for (realization, target_label, target_size, mu), group in grouped:
+        sorted_group = group.sort_values(by='b_percentage')
+        x = sorted_group['b_percentage'].values
+        m1 = sorted_group['M1'].values 
+        m2 = sorted_group['M2'].values
+        m1_auc_value = auc(x, m1)
+        m2_auc_value = auc(x, m2)
+        m1auc_values.append(m1_auc_value)
+        m2auc_values.append(m2_auc_value)
+        # print(f"Realization: {realization}, Target Label: {target_label}, Target Size: {target_size}, Mu: {mu}, Sigma_c: {sigma_c}, M1 AUC: {m1_auc_value}, M2 AUC: {m2_auc_value}")
+
+    return m1auc_values, m2auc_values # list of AUC values for the given sigma_c
+
+def compute_auc_distribution_specific(df, sigma_c, target_label, target_size, mu):
+    m1_auc_values = []
+    m2_auc_values = []
+    filtered_df = df[(df['sigma_c'] == sigma_c) & 
+                     (df['target_label'] == target_label) & 
+                     (df['target_size'] == target_size) & 
+                     (df['mu'] == mu) &
+                     (df['b_percentage'] != 0)]
+    grouped = filtered_df.groupby('realization')
+    # for each realization, compute AUC
+    for realization, group in grouped:
+        sorted_group = group.sort_values(by='b_percentage')
+        x = sorted_group['b_percentage'].values
+        m1 = sorted_group['M1'].values 
+        m2 = sorted_group['M2'].values
+        m1_auc_value = auc(x, m1)
+        m2_auc_value = auc(x, m2)
+        # print(f"Target Label: {target_label}, Target Size: {target_size}, Mu: {mu}, Sigma_c: {sigma_c}, M1 AUC: {m1_auc_value}, M2 AUC: {m2_auc_value}")
+        m1_auc_values.append(m1_auc_value)
+        m2_auc_values.append(m2_auc_value)
+    return m1_auc_values, m2_auc_values
+
+def jonckheere_terpstra_statistic(groups):
+    """Using method of direct counting to compute the Jonckheere-Terpstra statistic S.
+    (method from Wikipedia) on the AUC values for different groups
+    """
+    n = sum(len(g) for g in groups) # total number of observations
+    # print(f"Total number of observations: {n}")
+    S = 0
+    P = 0
+    Q = 0
+    for i in range(len(groups)): # iterate over groups
+        for j in range(i + 1, len(groups)): # iterate over groups after (assumed larger) i
+            for x in groups[i]: # iterate over values in group i
+                for y in groups[j]: # iterate over values in group j
+                    if x < y: # x is less than y 
+                        P += 1 # increment S
+                    elif x > y: # x is greater than y
+                        Q += 1 # increment Q 
+
+    S = P - Q                 
+    return S
+
+
+def var_S_no_ties(group_sizes):
+    """
+    Variance of S assuming no ties in the dependent variable across groups.
+    Wikipedia 'Normal approximation to S'.
+    group_sizes: list/array of t_i (sizes per group)
+    """
+    t = np.asarray(group_sizes, dtype=np.int64)
+    n = int(t.sum())
+    return (2 * (n**3 - np.sum(t**3)) + 3 * (n**2 - np.sum(t**2))) / 18.0
+
+def var_S_ties(group_sizes, tie_counts):
+    """
+    Variance of S with ties in the dependent variable across groups.
+    Wikipedia 'Normal approximation to S'.
+    group_sizes: list/array of t_i (sizes per group)
+    tie_counts: list/array of u_j (counts of tied values)
+    """
+    t = np.asarray(group_sizes, dtype=np.int64)
+    n = int(t.sum())
+    tie_counts = np.asarray(tie_counts, dtype=np.int64)
+    term1 = (2 * (n**3 - np.sum(t**3)) + 3 * (n**2 - np.sum(t**2))) / 18.0
+    term2 = (1 / (18.0 * n * (n - 1) * (n - 2))) * np.sum(tie_counts * (tie_counts**2 - 3 * tie_counts + 2))
+    return term1 - term2
+
+
+from scipy.stats import norm, binomtest
+
+def jt_from_S(groups_in_order, S, alternative="increasing"):
+    """
+    alternative="increasing" aka next group is higher mean
+    groups_in_order     under the given order
+    Returns z and one-sided p-value.
+    """
+    sizes = [len(g) for g in groups_in_order]
+    all_vals = np.concatenate([np.asarray(g, dtype=float) for g in groups_in_order])
+    _, tie_counts = np.unique(all_vals, return_counts=True)
+    has_ties = np.any(tie_counts > 1)
+
+    # S = compute_S_from_groups(groups_in_order)
+    if has_ties:
+    #    print(f"Warning: There are {np.sum(tie_counts > 1)} ties in the data; variance correction for ties is not implemented.")
+       varS = var_S_ties(sizes, tie_counts)
+
+    else:
+        varS = var_S_no_ties(sizes)
+        S = np.sign(S) * (abs(S) - 1) # continuity correction
+    z = S / np.sqrt(varS)
+
+    if alternative == "increasing":
+        p = 1.0 - norm.cdf(z)          # one-sided: large +z supports increasing
+    elif alternative == "decreasing":
+        p = norm.cdf(z)                # one-sided: large -z supports decreasing
+    else:
+        raise ValueError("alternative must be 'increasing' or 'decreasing'")
+
+    # right-tail p-value for increasing trend
+    log_p = norm.logsf(z)           # natural log p
+    log10_p = log_p / np.log(10)    # log10 p
+
+    # print("log(p)   =", log_p)
+    # print("log10(p) =", log10_p)
+
+    # If you want a printable bound:
+    # p < 10^(floor(log10_p))
+    # bound_exp = int(np.floor(log10_p))
+    # print(f"One-sided p-value is < 10^{bound_exp}")
+    return {"S": int(S), "z": float(z), "p_one_sided": float(p)}
+
+def combine_z_stouffer(z_scores, alternative="increasing"):
+    """
+    Unweighted Stouffer combination for equal-sized cells.
+
+    z_scores: 1D array-like of per-cell z-statistics, already oriented so that
+              positive z supports the trend direction you're testing.
+    alternative:
+      - "increasing": positive z supports H_A, p = sf(Z_agg)
+      - "decreasing": negative z supports H_A, but if you've oriented signs so
+                      positive supports H_A, you still use "increasing".
+    Returns dict with Z_agg, p_one_sided, log10p.
+    """
+    z = np.asarray(z_scores, dtype=float)
+    C = z.size
+    Z_agg = z.sum() / np.sqrt(C)
+
+    # one-sided p-value (right tail) if positive supports alternative
+    logp = norm.logsf(Z_agg)  # stable
+    p = float(np.exp(logp))
+    log10p = float(logp / np.log(10))
+
+    return {"C": int(C), "Z_agg": float(Z_agg), "p_one_sided": p, "log10p": log10p}
+
+def summarize_directional_consistency(z_scores):
+    """
+    Reports how many cells support the trend direction (z>0) and tests if that is > 50%.
+    """
+    z = np.asarray(z_scores, dtype=float)
+    nz = z[z != 0]
+    C = nz.size
+    n_pos = int(np.sum(nz > 0))
+    frac_pos = n_pos / C if C else np.nan
+    # one-sided binomial: more than half positive
+    p_binom = float(binomtest(n_pos, C, 0.5, alternative="greater").pvalue) if C else np.nan
+    return {"C_nonzero": int(C), "n_pos": n_pos, "frac_pos": frac_pos, "binom_p": p_binom}
