@@ -1,6 +1,6 @@
 # Hiding Community from Graph Neural Networks
 
-This repository contains code to run experiments on hiding a target community from GNN-based community detection via graph perturbations (including feature-aware variants).
+This repository contains code to run experiments on hiding a target community from GNN-based community detection via graph perturbations including the proposed methods FCom-DICE (Feature-Community-guided DICE).
 
 ## Key files
 
