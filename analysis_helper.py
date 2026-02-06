@@ -1,12 +1,6 @@
 import glob
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-
+import os
+from tkinter import font
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -325,7 +319,7 @@ def plot_results_by_p(
 
                 # Titles/labels (now with correct mu substitution)
                 ax.set_title(f"{labels[metric]}{title_suffix.format(mu=mu)}", fontsize=16)
-                
+                print(f"Plotted metric {metric} for p={p_val}, mu={mu}")
                 # X-axis: only show labels on bottom row
                 if row_idx == n_rows - 1:
                     ax.set_xlabel(r'Budget $\beta_b$ (% of intra-community edges)', fontsize=14)
@@ -389,10 +383,7 @@ def plot_results_by_p(
 
     return df_all, figs_by_p
 
-import glob
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
+
 import seaborn as sns
 
 def plot_metric_heatmaps_same_scale(
@@ -430,7 +421,7 @@ def plot_metric_heatmaps_same_scale(
 
     # Layout 2x3 for (M1: 3 views) + (M2: 3 views)
     fig, axes = plt.subplots(nrows=2, ncols=3, figsize=figsize)
-    axes = axes.flatten()
+    # axes = axes.flatten()
 
     plot_configs = [
         ('M1', 'p',  'sigma_c'),
@@ -473,8 +464,11 @@ def plot_metric_heatmaps_same_scale(
     fig.canvas.draw()  # ensure positions are computed
 
     # Positions of the last column axes (rightmost)
-    ax_m1_last = axes[2]   # top-right
-    ax_m2_last = axes[5]   # bottom-right
+    # ax_m1_last = axes[2]   # top-right
+    # ax_m2_last = axes[5]   # bottom-right
+    ax_m1_last = axes[0, 2]   # top-right (M1 row)
+    ax_m2_last = axes[1, 2]   # bottom-right (M2 row)
+
 
     # Add thin axes for colorbars next to those
     bbox1 = ax_m1_last.get_position()
@@ -484,7 +478,9 @@ def plot_metric_heatmaps_same_scale(
 
     counts = {'M1': 0, 'M2': 0}  # how many heatmaps of each metric we've drawn
 
-    for ax, (metric, index, columns) in zip(axes, plot_configs):
+    for idx, (metric, index, columns) in enumerate(plot_configs):
+        r, c = divmod(idx, 3)
+        ax = axes[r, c]
         pivot = grouped.pivot_table(index=index, columns=columns, values=metric)
         vmin, vmax = metric_limits[metric]
 
@@ -500,12 +496,26 @@ def plot_metric_heatmaps_same_scale(
             pivot, cmap=cmap_this, annot=annot, fmt=fmt, ax=ax,
             vmin=vmin, vmax=vmax, cbar=show_cbar, cbar_ax=cbar_ax
         )
+        for text in hm.texts:
+            text.set_fontsize(12)
         # if show_cbar and hm.collections:
         #     hm.collections[0].colorbar.set_label(f"{labels[metric]} scale", rotation=270, labelpad=12)
+        # --- Axis visibility rules ---
+        if r == 1:
+            ax.set_xlabel(labels[columns], fontsize=13)
+        else:
+            ax.set_xlabel("")
+            ax.tick_params(axis='x', labelbottom=False)
+
+        if c == 0:
+            ax.set_ylabel(labels[index], fontsize=13)
+        else:
+            ax.set_ylabel("")
+            ax.tick_params(axis='y', labelleft=False)
 
         ax.set_title(f"{labels[metric]}: {labels[index]} vs {labels[columns]}", fontsize=12)
-        ax.set_xlabel(labels[columns])
-        ax.set_ylabel(labels[index])
+        # ax.set_xlabel(labels[columns])
+        # ax.set_ylabel(labels[index])
 
         counts[metric] += 1
 
@@ -527,8 +537,17 @@ def plot_metric_heatmaps_same_scale(
     #     ax.set_xlabel(labels[columns])
     #     ax.set_ylabel(labels[index])
 
+    # --- Row labels next to colorbars ---
+    cbar_ax_m1.text(
+        3.5, 0.5, r"$M_1$", transform=cbar_ax_m1.transAxes,
+        rotation=270, va='center', ha='center', fontsize=14, fontweight='bold'
+    )
+    cbar_ax_m2.text(
+        3.5, 0.5, r"$M_2$", transform=cbar_ax_m2.transAxes,
+        rotation=270, va='center', ha='center', fontsize=14, fontweight='bold'
+    )
     plt.tight_layout()
-    plt.savefig("metric_heatmaps.png", dpi=300)
+    # plt.savefig("metric_heatmaps.png", dpi=300)
     plt.show()
 
     return grouped, metric_limits
@@ -640,10 +659,6 @@ def plot_area_mu_sigma_heatmaps_multiple_methods(
     plt.show()
 
     return areas, limits
-
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
 
 def plot_baseline_vs_multiple_modified_over_b_for_sigma(
     df_baseline: pd.DataFrame,
@@ -795,9 +810,6 @@ def plot_baseline_vs_multiple_modified_over_b_for_sigma(
     areas_df = pd.DataFrame(area_rows)
     return areas_df
 
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
 
 def plot_area_vs_sigma_for_methods(
     df_base: pd.DataFrame,
@@ -974,10 +986,6 @@ def plot_area_vs_sigma_for_methods(
     return area_df_detail, area_df_plot
 
 
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
 
 def plot_relative_change_mu_sigma_heatmaps_multiple_methods(
     df_base: pd.DataFrame,
@@ -988,6 +996,7 @@ def plot_relative_change_mu_sigma_heatmaps_multiple_methods(
     percent=False,                        # True -> show % (×100)
     cmap=None,                            # dict per metric or single cmap for all
     annot=True,
+    sd = True,                            # show standard deviation in each cell
     fmt='.3f',
     figsize_per_row=(14, 5)
 ):
@@ -999,7 +1008,7 @@ def plot_relative_change_mu_sigma_heatmaps_multiple_methods(
       - 'mean'     : average_b rel(b)            [recommended default]
       - 'integral' : ∫ rel(b) db  (trapz on b∈[0,1])
 
-    Plots μ × σ_c heatmaps with one row per modified method (columns = metrics).
+    Plots μ × σ_c heatmaps with one row per modified method (columns = metrics). Adds standard deviation to each cell if sd = True.
 
     Assumes dataframes have: ['mu','sigma_c','b_percentage', <metrics...>, ...]
     Pre-filter to desired p before calling if needed.
@@ -1059,14 +1068,15 @@ def plot_relative_change_mu_sigma_heatmaps_multiple_methods(
                     rel = (mod_vals - base_vals) / denom
                     # print('method:', method_label, 'metric:', metric, 'mu:', mu, 'sc:', sc)
                     # print('rel:', rel)
-
+                    rel_sd = None
                     if aggregate == 'integral':
                         rel_value = float(np.trapz(rel, x))
                     elif aggregate == 'mean':
                         rel_value = float(np.mean(rel))
+                        rel_sd = float(np.std(rel))
                     else:
                         raise ValueError("aggregate must be 'mean' or 'integral'")
-
+                    
                     if percent:
                         rel_value *= 100.0
 
@@ -1075,7 +1085,8 @@ def plot_relative_change_mu_sigma_heatmaps_multiple_methods(
                         'metric': metric,
                         'mu': float(mu),
                         'sigma_c': float(sc),
-                        'rel_value': rel_value
+                        'rel_value': rel_value,
+                        'rel_sd': rel_sd 
                     })
 
     rel_df = pd.DataFrame(rows)
@@ -1111,29 +1122,53 @@ def plot_relative_change_mu_sigma_heatmaps_multiple_methods(
             vmin, vmax = limits[metric]
             # Use metric-specific colormap
             metric_cmap = cmap.get(metric, 'YlGnBu') if isinstance(cmap, dict) else cmap
-            sns.heatmap(pivot, cmap=metric_cmap, annot=annot, fmt=fmt, ax=ax,
+            if sd and aggregate == 'mean':
+                # create annotation strings with mean ± sd
+                sd_df = df_m.pivot_table(index='mu', columns='sigma_c', values='rel_sd')
+                annot = (
+                            pivot.applymap(lambda v: f"{v:.1f}")
+                            + "\n± "
+                            + sd_df.applymap(lambda v: f"{v:.2f}")
+                            )
+            else:
+                annot = annot
+            sns.heatmap(pivot, cmap=metric_cmap, annot=annot, fmt="" if sd else fmt, ax=ax,
                         vmin=vmin, vmax=vmax, cbar=True)
+            for text in ax.texts:
+                if "\n±" in text.get_text():
+                    mean, sd = text.get_text().split("\n", 1)
+                    x, y = text.get_position()
+                    text.set_text(mean)              # keep mean normal
+                    text.set_fontsize(11)             # mean size
+
+                    ax.text(
+                        x, y + 0.22,                  # shift SD downward
+                        sd,
+                        ha='center',
+                        va='center',
+                        fontsize=9,                   # smaller SD
+                        color=text.get_color()
+                    )
+
             # Use LaTeX labels for metrics in title
             metric_label = labels.get(metric, metric)
             # ax.set_title(f"{method_label} | {metric_label}: {subtitle}{unit}", fontsize=11)
-            ax.set_title(f"{metric_label}{unit}", fontsize=12)
-            ax.set_xlabel(labels['sigma_c'])
+            ax.set_title(f"{metric_label}{unit}", fontsize=13)
+            ax.set_xlabel(labels['sigma_c'], fontsize=13)
             
             # Only show y-axis label on first column (M1), hide for subsequent columns (M2, etc.)
             if c == 0:
-                ax.set_ylabel(labels['mu'])
+                ax.set_ylabel(labels['mu'], fontsize=13)
             else:
                 ax.set_ylabel('')
                 ax.tick_params(axis='y', labelleft=False)
-
+    # print all mean values for reference
+    # print(rel_df[['method','metric','mu','sigma_c','rel_value']])
     plt.tight_layout()
     plt.show()
 
     return rel_df, limits
 
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
 
 def plot_relative_change_vs_sigma_for_methods(
     df_base: pd.DataFrame,
@@ -1318,9 +1353,6 @@ def plot_relative_change_vs_sigma_for_methods(
     return rel_df_detail, rel_df_plot
 
 
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
 
 def plot_diff_at_b_vs_sigma_for_methods(
     df_base: pd.DataFrame,
@@ -1667,3 +1699,199 @@ def plot_results_real_networks(
     plt.show()
 
     return dict_dfs, fig
+
+
+def load_method_results(root_dir, datasets, sigma_c_values):
+    """
+    root_dir: e.g. 'results_dice_real_networks_featurized'
+    datasets: ['Wiki', 'Facebook', ...]
+    sigma_c_values: iterable of sigma_c values as strings, e.g. ['0.1', '0.2', ...] or node attribute names
+    """
+    dfs = []
+
+    for dataset in datasets:
+        for sc in sigma_c_values:
+            folder = os.path.join(root_dir, dataset, f"sigma_c{sc}")
+            files = glob.glob(os.path.join(folder, "*.csv"))
+
+            if not files:
+                continue
+
+            df = pd.concat([pd.read_csv(f) for f in files], ignore_index=True)
+            df["dataset"] = dataset
+            df["sigma_c"] = sc
+            dfs.append(df)
+
+    return pd.concat(dfs, ignore_index=True)
+
+
+def plot_relative_change_real_networks_sigma_heatmaps_multiple_methods(
+    df_base: pd.DataFrame,
+    modified_dfs: dict,                   # {"label": df_mod, ...}
+    metrics=('M1','M2'),
+    aggregate='mean',                   # 'mean' | 'integral' over b
+    eps=1e-30,                          # to avoid division by ~0 baseline
+    percent=True,                 # if True, multiply by 100 for % change
+    cmap=None,                      
+    annot=True,                 
+    sd=True,
+    fmt='.3f',
+    figsize_per_row=(14, 5)
+):
+    """
+    Same as μ×σ_c heatmaps, but replaces μ with DATASET on y-axis.
+
+    Assumes dataframes have:
+      ['dataset','sigma_c','b_percentage', <metrics...>]
+    """
+
+    labels = {
+        'ECS': r"$ECS$",
+        'M1': r"$\overline{\Delta M_1}$",
+        'M2': r"$\overline{\Delta M_2}$",
+        'sigma_c': r"$\sigma_c$",
+        'dataset': r"Dataset"
+    }
+
+    if cmap is None:
+        cmap = {'ECS': 'YlGnBu', 
+                'M1': 'PuBuGn', 
+                'M2': 'YlOrBr'}
+    elif isinstance(cmap, str):
+        cmap = {m: cmap for m in metrics}
+
+    datasets = sorted(
+        pd.concat([df_base['dataset']] +
+                  [d['dataset'] for d in modified_dfs.values()]).unique()
+    )
+    sigma_values = sorted(
+        pd.concat([df_base['sigma_c']] +
+                  [d['sigma_c'] for d in modified_dfs.values()]).unique()
+    )
+
+    def mean_curve_over_b(df, metric):
+        return df.groupby('b_percentage')[metric].mean().sort_index()
+
+    rows = []
+    for method_label, df_mod in modified_dfs.items():
+        for metric in metrics:
+            for ds in datasets:
+                db_ds = df_base[df_base['dataset'] == ds]
+                dm_ds = df_mod[df_mod['dataset'] == ds]
+                for sc in sigma_values:
+                    base = db_ds[db_ds['sigma_c'] == sc]
+                    mod  = dm_ds[dm_ds['sigma_c'] == sc]
+                    if base.empty or mod.empty:
+                        continue
+
+                    y_base = mean_curve_over_b(base, metric)
+                    y_mod  = mean_curve_over_b(mod, metric)
+
+                    common_b = sorted(set(y_base.index) & set(y_mod.index))
+                    if len(common_b) < 2:
+                        continue
+
+                    base_vals = y_base.reindex(common_b).to_numpy(float)
+                    mod_vals  = y_mod.reindex(common_b).to_numpy(float)
+
+                    denom = np.maximum(np.abs(base_vals), eps)
+                    rel = (mod_vals - base_vals) / denom
+
+                    rel_sd = None
+                    if aggregate == 'mean':
+                        rel_value = float(np.mean(rel))
+                        rel_sd = float(np.std(rel))
+                    elif aggregate == 'integral':
+                        x = np.array(common_b, dtype=float)
+                        rel_value = float(np.trapz(rel, x))
+                    else:
+                        raise ValueError("aggregate must be 'mean' or 'integral'")
+
+                    if percent:
+                        rel_value *= 100
+
+                    rows.append({
+                        'method': method_label,
+                        'metric': metric,
+                        'dataset': ds,
+                        'sigma_c': sc,
+                        'rel_value': rel_value,
+                        'rel_sd': rel_sd
+                    })
+
+    rel_df = pd.DataFrame(rows)
+    if rel_df.empty:
+        raise ValueError("No relative values computed.")
+
+    limits = {}
+    for metric in metrics:
+        v = rel_df.loc[rel_df['metric'] == metric, 'rel_value'].dropna()
+        limits[metric] = (v.min(), v.max()) if len(v) else (0, 0)
+
+    n_rows, n_cols = len(modified_dfs), len(metrics)
+    fig, axes = plt.subplots(
+        n_rows, n_cols,
+        figsize=(figsize_per_row[0], figsize_per_row[1] * n_rows)
+    )
+    if n_rows == 1: axes = np.array([axes])
+    if n_cols == 1: axes = axes.reshape(n_rows, 1)
+
+    unit = " (%)" if percent else ""
+
+    for r, (method_label, _) in enumerate(modified_dfs.items()):
+        df_row = rel_df[rel_df['method'] == method_label]
+        for c, metric in enumerate(metrics):
+            ax = axes[r, c]
+            df_m = df_row[df_row['metric'] == metric]
+
+            pivot = df_m.pivot_table(
+                index='dataset', columns='sigma_c', values='rel_value'
+            )
+
+            vmin, vmax = limits[metric]
+            metric_cmap = cmap.get(metric, 'YlGnBu')
+
+            if sd and aggregate == 'mean':
+                sd_df = df_m.pivot_table(
+                    index='dataset', columns='sigma_c', values='rel_sd'
+                )
+                annot_data = (
+                    pivot.applymap(lambda v: f"{v:.2f}") +
+                    "\n± " +
+                    sd_df.applymap(lambda v: f"{v:.2f}")
+                )
+                fmt_used = ""
+            else:
+                annot_data = True
+                fmt_used = fmt
+
+            sns.heatmap(
+                pivot, cmap=metric_cmap,
+                annot=annot_data, fmt=fmt_used,
+                vmin=vmin, vmax=vmax,
+                ax=ax, cbar=True
+            )
+
+            # SD smaller font
+            for text in ax.texts:
+                if "\n±" in text.get_text():
+                    mean, sd = text.get_text().split("\n", 1)
+                    x, y = text.get_position()
+                    text.set_text(mean)
+                    text.set_fontsize(10)
+                    ax.text(
+                        x, y + 0.28, sd,
+                        ha='center', va='center',
+                        fontsize=7, color=text.get_color()
+                    )
+
+            ax.set_title(labels.get(metric, metric) + unit)
+            ax.set_xlabel(labels['sigma_c'])
+            ax.set_ylabel(labels['dataset'] if c == 0 else "")
+            if c > 0:
+                ax.tick_params(axis='y', labelleft=False)
+
+    plt.tight_layout()
+    plt.show()
+
+    return rel_df, limits
