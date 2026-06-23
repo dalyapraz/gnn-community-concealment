@@ -1,4 +1,3 @@
-mu=0.01 sigma_c=0.01 minc=60 seed=7 pvals="0.5" feature=None outfile=dmon_dice_0.01_mincomm_60_sigma0.01_pAll_featNone.csv
-mu=0.01 sigma_c=0.01 minc=60 seed=7 pvals="0.5" feature=connecting_node outfile=dmon_dice_0.01_mincomm_60_sigma0.01_pAll_featconnecting_node.csv
-mu=0.01 sigma_c=0.01 minc=60 seed=7 pvals="0.5" feature=average_community outfile=dmon_dice_0.01_mincomm_60_sigma0.01_pAll_feataverage_community.csv
-
+model=dmon mu=0.01 sigma_c=0.1 minc=60 seed=7 pvals="0.5" attack=dice feature=None outfile=test_dmon_dice_sigma01_mu001_mincom60.csv
+model=mincut mu=0.01 sigma_c=0.1 minc=60 seed=7 pvals="0.5" attack=dice feature=None outfile=test_mincut_dice_sigma01_mu001_mincom60.csv
+model=diffpool mu=0.01 sigma_c=0.1 minc=60 seed=7 pvals="0.5" attack=dice feature=None outfile=test_diffpool_dice_sigma01_mu001_mincom60.csv

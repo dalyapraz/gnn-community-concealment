@@ -1,14 +1,14 @@
 #!/bin/bash
-#SBATCH --job-name=fcomdice10
+#SBATCH --job-name=fcomdice_diffpool
 #SBATCH --partition=gpu
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --gpus-per-node=1
-#SBATCH --cpus-per-task=16
+#SBATCH --cpus-per-task=8
 #SBATCH --time=2-00:00:00  # 2 days 
 #SBATCH --mem=100G
 #SBATCH -A r01712
-#SBATCH --array=0-11  # Adjust based on number of lines in params.tsv
+#SBATCH --array=0-29  # Adjust based on number of lines in params.tsv
 #SBATCH --output=logs/%x_%A_%a.out # Job name, array job ID, task ID
 #SBATCH --error=logs/%x_%A_%a.err # Job name, array job ID, task ID
 #SBATCH --mail-type=ALL
@@ -20,39 +20,53 @@ module load python/gpu/3.11.5
 module load cudatoolkit/11.8
 
 cd "$SLURM_SUBMIT_DIR/gnn-clustering-attack-defense"
-mkdir -p results_fcomdice_30r logs
+mkdir -p results_fcomdice_diffpool logs
 
 # Get this task's params (key=value pairs) and eval them
-line=$(sed -n "$((SLURM_ARRAY_TASK_ID+1))p" params10_pD.tsv)
+line=$(sed -n "$((SLURM_ARRAY_TASK_ID+1))p" params_fcomdice_diffpool.tsv)
 # shellcheck disable=SC2086
 eval "$line"   # defines: mu sigma_c minc seed pvals feature outfile
 
 # Sanity checks (fail early with a clear message)
-: "${mu:?missing mu}"; : "${sigma_c:?missing sigma_c}"; : "${minc:?missing minc}"
-: "${seed:?missing seed}"; : "${feature:?missing feature}"; : "${outfile:?missing outfile}"
-: "${pvals:?missing pvals}"   # we bundle all p's in one run
+: "${model:?missing model}"
+: "${attack:?missing attack}"
+: "${mu:?missing mu}"
+: "${sigma_c:?missing sigma_c}"
+: "${minc:?missing minc}"
+: "${seed:?missing seed}"
+: "${feature:?missing feature}"
+: "${outfile:?missing outfile}"
 
 echo "[SLURM] Job $SLURM_JOB_ID task $SLURM_ARRAY_TASK_ID on $(hostname)"
-echo "[SLURM] CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES-}  mu=$mu sigma_c=$sigma_c p=[$pvals] feature=$feature minc=$minc seed=$seed"
+echo "[SLURM] CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES-}"
+echo "[SLURM] model=$model attack=$attack mu=$mu sigma_c=[$sigma_c] p=0.5 feature=$feature minc=$minc seed=$seed"
 
-# If feature=None, omit the flag (argparse can't parse literal "None" as a choice cleanly)
+ATTACK_ARG=()
+if [[ "$attack" == "fcomdice" ]]; then
+  ATTACK_ARG=(--FComDICE)
+elif [[ "$attack" == "dice" ]]; then
+  ATTACK_ARG=(--no-FComDICE)
+else
+  echo "[ERROR] Unknown attack=$attack. Expected dice or fcomdice."
+  exit 1
+fi
+
 FEATURE_ARG=()
 if [[ "$feature" != "None" ]]; then
   FEATURE_ARG=(--attack_feature_mode "$feature")
 fi
 
-# Unbuffered so prints stream; one combo per GPU/task
-# eval’d vars provide: mu, sigma_c (possibly multiple), pvals (multiple), feature, outfile, minc, seed
-srun --unbuffered python -u run_experiments.py \
+srun --unbuffered --label python -u run_experiments.py \
+  --model_name "$model" \
   --mu_values "$mu" \
   --sigma_c_values $sigma_c \
-  --realizations 30 \
-  --p_values $pvals \
+  --realizations 50 \
+  --p_values 0.5 \
   --min_community "$minc" \
   --seed "$seed" \
-  ${FEATURE_ARG[@]+"${FEATURE_ARG[@]}"} \
-  --outfile_csv "results_fcomdice_30r/${outfile}"
-
+  "${ATTACK_ARG[@]}" \
+  "${FEATURE_ARG[@]}" \
+  --outfile_csv "results_fcomdice_diffpool/${outfile}"
 
 status=$?
 echo "[SLURM] exit code = $status"

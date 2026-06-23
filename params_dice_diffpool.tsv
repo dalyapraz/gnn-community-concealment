@@ -1,0 +1,30 @@
+model=diffpool attack=dice mu=0.01 sigma_c="0.01 0.1 0.5" minc=10 seed=42 feature=None outfile=diffpool_dice_mu001_sigma_low_mincomm10.csv
+model=diffpool attack=dice mu=0.01 sigma_c="1 2 5" minc=10 seed=42 feature=None outfile=diffpool_dice_mu001_sigma_high_mincomm10.csv
+model=diffpool attack=dice mu=0.1 sigma_c="0.01 0.1 0.5" minc=10 seed=42 feature=None outfile=diffpool_dice_mu01_sigma_low_mincomm10.csv
+model=diffpool attack=dice mu=0.1 sigma_c="1 2 5" minc=10 seed=42 feature=None outfile=diffpool_dice_mu01_sigma_high_mincomm10.csv
+model=diffpool attack=dice mu=0.2 sigma_c="0.01 0.1 0.5" minc=10 seed=42 feature=None outfile=diffpool_dice_mu02_sigma_low_mincomm10.csv
+model=diffpool attack=dice mu=0.2 sigma_c="1 2 5" minc=10 seed=42 feature=None outfile=diffpool_dice_mu02_sigma_high_mincomm10.csv
+model=diffpool attack=dice mu=0.3 sigma_c="0.01 0.1 0.5" minc=10 seed=42 feature=None outfile=diffpool_dice_mu03_sigma_low_mincomm10.csv
+model=diffpool attack=dice mu=0.3 sigma_c="1 2 5" minc=10 seed=42 feature=None outfile=diffpool_dice_mu03_sigma_high_mincomm10.csv
+model=diffpool attack=dice mu=0.4 sigma_c="0.01 0.1 0.5" minc=10 seed=42 feature=None outfile=diffpool_dice_mu04_sigma_low_mincomm10.csv
+model=diffpool attack=dice mu=0.4 sigma_c="1 2 5" minc=10 seed=42 feature=None outfile=diffpool_dice_mu04_sigma_high_mincomm10.csv
+model=diffpool attack=dice mu=0.5 sigma_c="0.01 0.1 0.5" minc=10 seed=42 feature=None outfile=diffpool_dice_mu05_sigma_low_mincomm10.csv
+model=diffpool attack=dice mu=0.5 sigma_c="1 2 5" minc=10 seed=42 feature=None outfile=diffpool_dice_mu05_sigma_high_mincomm10.csv
+model=diffpool attack=dice mu=0.01 sigma_c="0.01 0.1 0.5" minc=30 seed=25 feature=None outfile=diffpool_dice_mu001_sigma_low_mincomm30.csv
+model=diffpool attack=dice mu=0.01 sigma_c="1 2 5" minc=30 seed=25 feature=None outfile=diffpool_dice_mu001_sigma_high_mincomm30.csv
+model=diffpool attack=dice mu=0.1 sigma_c="0.01 0.1 0.5" minc=30 seed=25 feature=None outfile=diffpool_dice_mu01_sigma_low_mincomm30.csv
+model=diffpool attack=dice mu=0.1 sigma_c="1 2 5" minc=30 seed=25 feature=None outfile=diffpool_dice_mu01_sigma_high_mincomm30.csv
+model=diffpool attack=dice mu=0.2 sigma_c="0.01 0.1 0.5" minc=30 seed=25 feature=None outfile=diffpool_dice_mu02_sigma_low_mincomm30.csv
+model=diffpool attack=dice mu=0.2 sigma_c="1 2 5" minc=30 seed=25 feature=None outfile=diffpool_dice_mu02_sigma_high_mincomm30.csv
+model=diffpool attack=dice mu=0.3 sigma_c="0.01 0.1 0.5" minc=30 seed=25 feature=None outfile=diffpool_dice_mu03_sigma_low_mincomm30.csv
+model=diffpool attack=dice mu=0.3 sigma_c="1 2 5" minc=30 seed=25 feature=None outfile=diffpool_dice_mu03_sigma_high_mincomm30.csv
+model=diffpool attack=dice mu=0.4 sigma_c="0.01 0.1 0.5" minc=30 seed=25 feature=None outfile=diffpool_dice_mu04_sigma_low_mincomm30.csv
+model=diffpool attack=dice mu=0.4 sigma_c="1 2 5" minc=30 seed=25 feature=None outfile=diffpool_dice_mu04_sigma_high_mincomm30.csv
+model=diffpool attack=dice mu=0.5 sigma_c="0.01 0.1 0.5" minc=30 seed=25 feature=None outfile=diffpool_dice_mu05_sigma_low_mincomm30.csv
+model=diffpool attack=dice mu=0.5 sigma_c="1 2 5" minc=30 seed=25 feature=None outfile=diffpool_dice_mu05_sigma_high_mincomm30.csv
+model=diffpool attack=dice mu=0.01 sigma_c="0.01 0.1 0.5 1 2 5" minc=60 seed=7 feature=None outfile=diffpool_dice_mu001_sigma_all_mincomm60.csv
+model=diffpool attack=dice mu=0.1 sigma_c="0.01 0.1 0.5 1 2 5" minc=60 seed=10 feature=None outfile=diffpool_dice_mu01_sigma_all_mincomm60.csv
+model=diffpool attack=dice mu=0.2 sigma_c="0.01 0.1 0.5 1 2 5" minc=60 seed=10 feature=None outfile=diffpool_dice_mu02_sigma_all_mincomm60.csv
+model=diffpool attack=dice mu=0.3 sigma_c="0.01 0.1 0.5 1 2 5" minc=60 seed=10 feature=None outfile=diffpool_dice_mu03_sigma_all_mincomm60.csv
+model=diffpool attack=dice mu=0.4 sigma_c="0.01 0.1 0.5 1 2 5" minc=60 seed=10 feature=None outfile=diffpool_dice_mu04_sigma_all_mincomm60.csv
+model=diffpool attack=dice mu=0.5 sigma_c="0.01 0.1 0.5 1 2 5" minc=60 seed=10 feature=None outfile=diffpool_dice_mu05_sigma_all_mincomm60.csv
