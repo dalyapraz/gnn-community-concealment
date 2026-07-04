@@ -386,6 +386,134 @@ def plot_results_by_p(
 
 import seaborn as sns
 
+
+
+def plot_metric_heatmaps_no_p(
+    folder='results',
+    glob_pattern='dmon_dice_*.csv',
+    metrics=('M1', 'M2'),
+    cmap_m1='YlGnBu',
+    cmap_m2='OrRd',
+    annot=True,
+    fmt='.3f',
+    figsize=(12, 5),
+    save_path=None
+):
+    # --- Load & combine ---
+    csv_files = glob.glob(f"{folder}/{glob_pattern}")
+
+    if len(csv_files) == 0:
+        raise FileNotFoundError(
+            f"No CSV files found in {folder} matching pattern {glob_pattern}"
+        )
+
+    df_all = pd.concat(
+        [pd.read_csv(f) for f in csv_files],
+        ignore_index=True
+    )
+
+    # --- Check required columns ---
+    required_cols = {'mu', 'sigma_c', *metrics}
+    missing = required_cols - set(df_all.columns)
+
+    if missing:
+        raise ValueError(f"Missing required columns: {missing}")
+
+    # --- Ensure numeric ---
+    for col in ['mu', 'sigma_c', *metrics]:
+        df_all[col] = pd.to_numeric(df_all[col], errors='coerce')
+
+    # --- Aggregate over realizations ---
+    grouped = (
+        df_all.groupby(['mu', 'sigma_c'])
+              .agg({m: 'mean' for m in metrics})
+              .reset_index()
+    )
+
+    grouped = grouped.sort_values(['mu', 'sigma_c'])
+
+    # --- Labels ---
+    labels = {
+        'M1': r"$M_1$",
+        'M2': r"$M_2$",
+        'sigma_c': r"$\sigma_c$",
+        'mu': r"$\mu$"
+    }
+
+    # --- Compute color limits per metric ---
+    metric_limits = {}
+
+    for metric in metrics:
+        vals = grouped[metric].dropna().values
+
+        if vals.size == 0:
+            vmin, vmax = 0.0, 1.0
+        else:
+            vmin, vmax = float(vals.min()), float(vals.max())
+
+        metric_limits[metric] = (vmin, vmax)
+
+    # --- Plot layout ---
+    n_metrics = len(metrics)
+    fig, axes = plt.subplots(
+        nrows=1,
+        ncols=n_metrics,
+        figsize=figsize,
+        squeeze=False
+    )
+
+    axes = axes.flatten()
+
+    for ax, metric in zip(axes, metrics):
+        pivot = grouped.pivot_table(
+            index='mu',
+            columns='sigma_c',
+            values=metric
+        )
+
+        vmin, vmax = metric_limits[metric]
+        cmap_this = cmap_m1 if metric == 'M1' else cmap_m2
+
+        hm = sns.heatmap(
+            pivot,
+            cmap=cmap_this,
+            annot=annot,
+            fmt=fmt,
+            ax=ax,
+            vmin=vmin,
+            vmax=vmax,
+            cbar=True
+        )
+
+        for text in hm.texts:
+            text.set_fontsize(12)
+
+        ax.set_title(
+            f"{labels[metric]}: {labels['mu']} vs {labels['sigma_c']}",
+            fontsize=12
+        )
+
+        ax.set_xlabel(labels['sigma_c'], fontsize=13)
+        ax.set_ylabel(labels['mu'], fontsize=13)
+
+        # Colorbar label
+        if hm.collections:
+            hm.collections[0].colorbar.set_label(
+                labels[metric],
+                rotation=270,
+                labelpad=15,
+                fontsize=13
+            )
+
+    plt.tight_layout()
+
+    if save_path is not None:
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+
+    plt.show()
+
+    return grouped, metric_limits
+
 def plot_metric_heatmaps_same_scale(
     folder_baseline='results',
     glob_baseline='dmon_dice_*.csv',
@@ -1126,9 +1254,9 @@ def plot_relative_change_mu_sigma_heatmaps_multiple_methods(
                 # create annotation strings with mean ± sd
                 sd_df = df_m.pivot_table(index='mu', columns='sigma_c', values='rel_sd')
                 annot = (
-                            pivot.applymap(lambda v: f"{v:.1f}")
+                            pivot.map(lambda v: f"{v:.1f}")
                             + "\n± "
-                            + sd_df.applymap(lambda v: f"{v:.2f}")
+                            + sd_df.map(lambda v: f"{v:.2f}")
                             )
             else:
                 annot = annot

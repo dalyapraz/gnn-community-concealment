@@ -129,11 +129,12 @@ class MinCut(torch.nn.Module):
         cluster_assignments: [num_nodes, num_clusters] soft node-cluster assignments
         loss: mincut loss + orthogonality loss
     """
-    def __init__(self, in_channels, num_clusters, hidden_channels=32, num_layers=1, gcn_skip=False,  dropout=0.5):
+    def __init__(self, in_channels, num_clusters, hidden_channels=32, num_layers=1, gcn_skip=False,  dropout=0.5, ortho_regularization=1.0):
         super().__init__()
         self.num_layers = num_layers
         self.gcn_skip = gcn_skip
         self.dropout = dropout
+        self.ortho_regularization = ortho_regularization
 
         self.convs = torch.nn.ModuleList()
         if num_layers == 1:
@@ -178,7 +179,7 @@ class MinCut(torch.nn.Module):
         )
 
         cluster_assignments = torch.softmax(s_logits, dim=-1)
-        total_loss = mincut_loss + ortho_loss
+        total_loss = mincut_loss + self.ortho_regularization * ortho_loss
 
         return cluster_assignments, total_loss
 
@@ -190,11 +191,13 @@ class DiffPool(torch.nn.Module):
         cluster_assignments: [num_nodes, num_clusters] soft node-cluster assignments
         loss: link prediction loss + entropy regularization loss
     """
-    def __init__(self, in_channels, num_clusters, hidden_channels=32, num_layers=1, gcn_skip=False,  dropout=0.5):
+    def __init__(self, in_channels, num_clusters, hidden_channels=32, num_layers=1, gcn_skip=False,  dropout=0.5, link_pred_regularization=1.0, entropy_regularization=1.0):
         super().__init__()
         self.num_layers = num_layers
         self.gcn_skip = gcn_skip
         self.dropout = dropout
+        self.link_pred_regularization = link_pred_regularization
+        self.entropy_regularization = entropy_regularization
 
         self.convs = torch.nn.ModuleList()
         if num_layers == 1:
@@ -239,7 +242,7 @@ class DiffPool(torch.nn.Module):
         )
 
         cluster_assignments = torch.softmax(s_logits, dim=-1)
-        total_loss = link_prediction_loss + entropy_loss
+        total_loss = self.link_pred_regularization * link_prediction_loss + self.entropy_regularization * entropy_loss
 
         return cluster_assignments, total_loss
 
