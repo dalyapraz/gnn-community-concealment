@@ -1,0 +1,2 @@
+model=mincut attack=fcomdice mu=0.2 sigma_c=0.01 minc=60 seed=10 feature=average_community outfile=mincut_fcomdice_mu02_sigma001_mincomm60.csv
+model=mincut attack=fcomdice mu=0.2 sigma_c=0.1 minc=60 seed=10 feature=average_community outfile=mincut_fcomdice_mu02_sigma01_mincomm60.csv

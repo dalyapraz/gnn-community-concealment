@@ -1,0 +1,10 @@
+model=mincut attack=dice batch=1 feature=None outfile=mincut_dice_original_facebook_r01_10.csv
+model=mincut attack=dice batch=2 feature=None outfile=mincut_dice_original_facebook_r11_20.csv
+model=mincut attack=dice batch=3 feature=None outfile=mincut_dice_original_facebook_r21_30.csv
+model=mincut attack=dice batch=4 feature=None outfile=mincut_dice_original_facebook_r31_40.csv
+model=mincut attack=dice batch=5 feature=None outfile=mincut_dice_original_facebook_r41_50.csv
+model=mincut attack=fcomdice batch=1 feature=average_community outfile=mincut_fcomdice_original_facebook_r01_10.csv
+model=mincut attack=fcomdice batch=2 feature=average_community outfile=mincut_fcomdice_original_facebook_r11_20.csv
+model=mincut attack=fcomdice batch=3 feature=average_community outfile=mincut_fcomdice_original_facebook_r21_30.csv
+model=mincut attack=fcomdice batch=4 feature=average_community outfile=mincut_fcomdice_original_facebook_r31_40.csv
+model=mincut attack=fcomdice batch=5 feature=average_community outfile=mincut_fcomdice_original_facebook_r41_50.csv

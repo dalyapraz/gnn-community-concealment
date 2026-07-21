@@ -116,11 +116,14 @@ echo "[SLURM] Launching run_experiments.py at $(date)"
 # # DiffPool
 srun --unbuffered --label python -u run_experiments.py \
   --model_name diffpool \
-  --sigma_c_values 0.1 --mu_values 0.01 \
+  --sigma_c_values 1 --mu_values 0.01 \
   --b_percentages 0.01 \
   --p_values 0.5 --realizations 2 \
   --min_community 60 --seed 7 \
-  --outfile_csv test_diffpool_dice_sigma01_mu001_min_com60.csv
+  --epochs 500 \
+  --dropout 0 \
+  --regularization 0.5 \
+  --outfile_csv test_diffpool_dice_sigma1_mu001_min_com60.csv
 
 status=$?
 echo "[SLURM] DiffPool exit code = $status"

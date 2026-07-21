@@ -29,22 +29,30 @@ print("Device count:", torch.cuda.device_count())
 print("Device name:", torch.cuda.get_device_name(0) if torch.cuda.is_available() else "No CUDA")
 
 
-def train_model(data, true_labels, num_features, num_layers=2, hidden=64, epochs=200, lr=0.001):
+def train_model(data, true_labels, model_name, num_features, num_layers=2, hidden=64, epochs=200, lr=0.001, dropout=0.5, regularization=1.0):
     import dmon
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     num_clusters = len(set(true_labels))
     # for Wiki dataset use these hyperparameters
-    model = dmon.DMoN(
-        in_channels=num_features, 
-        num_clusters=num_clusters, 
-        hidden_channels=hidden,
-        num_layers=num_layers, # default is 1 for shallow model or 2 for typical GCN
-        dropout=0.5,  
-        gcn_skip=True,
-        collapse_regularization=1.0  
-    ).to(device)
+    if model_name == "dmon":
+        model = dmon.DMoN(in_channels=num_features, num_clusters=num_clusters, hidden_channels=hidden,num_layers=num_layers, gcn_skip=True, dropout=dropout, collapse_regularization=regularization).to(device)
+    elif model_name == "mincut":
+        model = dmon.MinCut(in_channels=num_features, num_clusters=num_clusters, hidden_channels=hidden,num_layers=num_layers,gcn_skip=False, dropout=dropout, ortho_regularization=regularization).to(device)
+    elif model_name == "diffpool":
+        model = dmon.DiffPool(in_channels=num_features, num_clusters=num_clusters, hidden_channels=hidden,num_layers=num_layers, gcn_skip=False, dropout=dropout, entropy_regularization=regularization).to(device)
+    else:
+        raise ValueError(f"Unknown model name: {model_name}")
+    # model = dmon.DMoN(
+    #     in_channels=num_features, 
+    #     num_clusters=num_clusters, 
+    #     hidden_channels=hidden,
+    #     num_layers=num_layers, # default is 1 for shallow model or 2 for typical GCN
+    #     dropout=dropout,  
+    #     gcn_skip=True,
+    #     collapse_regularization=regularization  
+    # ).to(device)
     # model = dmon.DMoN(in_channels=num_features, num_clusters=num_clusters, gcn_skip=True)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=5e-4)
     data = data.to(device)  # send features and edges to GPU
@@ -71,6 +79,13 @@ def main(args):
     network_name = args.network_name
     b_percentages = args.b_percentages
     FComDICE = args.FComDICE
+    model_name = args.model_name
+    epochs = args.epochs
+    hidden = args.hidden
+    num_layers = args.num_layers
+    lr = args.lr
+    dropout = args.dropout
+    regularization = args.regularization
     if FComDICE:
         print("Using Feature + Community DICE attack")
     else:
@@ -98,13 +113,17 @@ def main(args):
                 elif args.consensus_labels_file.endswith(".membership"):
                     true_labels = np.loadtxt(os.path.join(folder, args.consensus_labels_file), dtype=int)
             else:
-                true_labels = np.load(os.path.join(folder, f"final_labels_{network_name}_consensus.npy"))
+                labels_path = os.path.join(folder, f"{network_name}_consensus_louvain.membership")
+                true_labels = np.loadtxt(labels_path, dtype=int)
+                #true_labels = np.load(os.path.join(folder, f"final_labels_{network_name}_consensus.npy"))
             true_labels = true_labels.astype(int)
             print("Loaded consensus", len(true_labels), "labels and", len(np.unique(true_labels)), "communities.")
     dim_features = data.x.shape[1]
     print(f"Number of nodes: {data.num_nodes}, Number of edges: {data.num_edges}, Feature dimension: {dim_features}")
     # Precompute pairwise similarities for feature-based attacks
-    _, S_nc = precompute_node_comm_neg_sqeuclidean(G, true_labels)
+    # _, S_nc = precompute_node_comm_neg_sqeuclidean(G, true_labels)
+    if FComDICE:
+        _, S_nc = precompute_node_comm_neg_sqeuclidean(G, true_labels)
     # === Save graph and membership ===
     # base_name = f"graph_{network_name}"
     # graph_file = os.path.join(results_dir, base_name + ".edgelist")
@@ -140,7 +159,7 @@ def main(args):
             # print("RSS GB:", psutil.Process(os.getpid()).memory_info().rss / 1e9)
             # if torch.cuda.is_available():
             #     print("GPU GB:", torch.cuda.memory_allocated() / 1e9)
-            pred_labels = train_model(data, true_labels, num_features=dim_features, num_layers=args.num_layers, hidden=args.hidden, epochs=args.epochs, lr=args.lr)
+            pred_labels = train_model(data, true_labels, model_name=model_name, num_features=dim_features, num_layers=num_layers, hidden=hidden, epochs=epochs, lr=lr, dropout=dropout, regularization=regularization)
             # print("RSS GB:", psutil.Process(os.getpid()).memory_info().rss / 1e9)
             # if torch.cuda.is_available():
             #     print("GPU GB:", torch.cuda.memory_allocated() / 1e9)
@@ -149,7 +168,7 @@ def main(args):
             M2 = attacks.compute_M2(target_list=target_community, labels=pred_labels)
         
             results_rows.append([
-                        network_name, target_label, target_size, 0, 0, None, 0, ecs_initial, M1, M2, None
+                        network_name, target_label, target_size, 0, 0, None, realization+1, ecs_initial, M1, M2, None
                     ])
         # Budget as % of intra-community edges
         G_target = G.subgraph(target_community)
@@ -174,7 +193,7 @@ def main(args):
                     # print("RSS GB:", psutil.Process(os.getpid()).memory_info().rss / 1e9)
                     # if torch.cuda.is_available():
                     #     print("GPU GB:", torch.cuda.memory_allocated() / 1e9)
-                    pred_labels_attacked = train_model(data_attacked, true_labels, num_features=dim_features, num_layers=args.num_layers, hidden=args.hidden, epochs=args.epochs, lr=args.lr)
+                    pred_labels_attacked = train_model(data_attacked, true_labels, model_name=model_name, num_features=dim_features, num_layers=num_layers, hidden=hidden, epochs=epochs, lr=lr, dropout=dropout, regularization=regularization)
                     # print("Memory after attack after training")
                     # print("RSS GB:", psutil.Process(os.getpid()).memory_info().rss / 1e9)
                     # if torch.cuda.is_available():
@@ -202,12 +221,15 @@ if __name__ == "__main__":
     parser.add_argument("--featurized_sigma_c", type=float, default=1.0, help="Sigma_c value for featurized graph")
     parser.add_argument("--consensus", action=argparse.BooleanOptionalAction, default=True, help="Use consensus labels from multiple DMoN runs before attack")
     parser.add_argument("--consensus_labels_file", type=str, default=None)
+    parser.add_argument("--model_name", type=str, default="dmon", choices=["dmon", "mincut", "diffpool"], help="Which model to use for training and evaluation")
     parser.add_argument("--hidden", type=int, default=64)
     parser.add_argument("--num_layers", type=int, default=2)
     parser.add_argument("--epochs", type=int, default=200)
     parser.add_argument("--lr", type=float, default=0.001)
+    parser.add_argument("--dropout", type=float, default=0.5)
+    parser.add_argument("--regularization", type=float, default=1.0)
     parser.add_argument("--realizations", type=int, default=50)
-    parser.add_argument("--seed", type=int, default=None)
+    # parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--outfile_csv", type=str, default=None)
     parser.add_argument("--b_percentages", nargs="+", type=float, default=[0.01, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85,  0.9, 0.95, 1])
     # parser.add_argument("--b_percentages", nargs="+", type=float, default=[0.01, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5])
@@ -220,7 +242,10 @@ if __name__ == "__main__":
         # Dynamically set outfile_csv if not provided
     if args.outfile_csv is None:
         p_str = "_".join(str(p) for p in args.p_values)
-        args.outfile_csv = f"dmon_dice_{args.network_name}.csv"
+        sigma_str = f"sigma{args.featurized_sigma_c}" if args.featurized else "original"
+        attack_str = "fcomdice" if args.FComDICE else "dice"
+        args.outfile_csv = f"{args.model_name}_{attack_str}_sigma{sigma_str}_{args.network_name}.csv"
+
 
     print(f"Results will be saved to: {args.outfile_csv}")
     main(args)

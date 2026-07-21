@@ -1,7 +1,7 @@
 #!/bin/bash
 
-#SBATCH --job-name=consensus_BitcoinTransactions    # Job name for the array
-#SBATCH --partition=gpu-debug            # Partition (queue) name
+#SBATCH --job-name=test_BTC_mincut    # Job name for the array
+#SBATCH --partition=gpu-debug           # Partition (queue) name
 #SBATCH --output=logs/%x_%A_%a.out      # Output file for stdout (%A: array job ID, %a: task ID)
 #SBATCH --error=logs/%x_%A_%a.err       # Output file for stderr (%A: array job ID, %a: task ID)
 #SBATCH --mail-type=ALL                 # Email notification for job events
@@ -32,15 +32,20 @@ export OPENBLAS_NUM_THREADS=${SLURM_CPUS_PER_TASK}
 export CUDA_LAUNCH_BLOCKING=1
 
 module purge
-# module load python/gpu/3.11.5 # not available any more on big red 
-# module load cudatoolkit/11.8
-module load python/gpu/3.10.10
+module load python/gpu/3.11.5
+module load cudatoolkit/11.8
 
 echo "[SLURM] JobID: $SLURM_JOB_ID  Node: $(hostname)"
 echo "[SLURM] NodeList: ${SLURM_NODELIST-}  SubmitDir: ${SLURM_SUBMIT_DIR-}"
 
 # Preflight GPU
-python - <<'PY' || { echo "Preflight CUDA test failed"; exit 1; }
+# python - <<'PY' || { echo "Preflight CUDA test failed"; exit 1; }
+echo "[SLURM] CUDA_VISIBLE_DEVICES outside srun: ${CUDA_VISIBLE_DEVICES-}"
+
+echo "[SLURM] nvidia-smi inside srun:"
+srun --unbuffered --label nvidia-smi || true
+
+srun --unbuffered --label python - <<'PY' || { echo "Preflight CUDA test failed"; exit 1; }
 import os, torch
 print("torch.__version__ =", torch.__version__)
 print("torch.version.cuda =", torch.version.cuda)
@@ -63,20 +68,57 @@ import attacks, dmon, torch_geometric
 print("Imports OK", flush=True)
 PY
 
-echo "[SLURM] Launching run_experiments_real_networks.py at $(date)"
+echo "[SLURM] Launching run_experiments.py at $(date)"
 
-# DICE on  BitcoinTransactions with consensus Louvain true labels
+
+# DICE on featurized Wiki with consensus Louvain true labels
 srun --unbuffered --label python -u run_experiments_real_networks.py \
+  --model_name mincut \
   --p_values 0.5 \
   --b_percentages 0.01 \
   --realizations 1 \
-  --consensus \
-  --consensus_labels_file BitcoinTransactions_consensus_louvain.membership \
   --network_name BitcoinTransactions \
-  --outfile_csv test_dice_BitcoinTransactions_consensus_louvain.csv
+  --num_layers 2 \
+  --lr 0.01 \
+  --epochs 500 \
+  --dropout 0 \
+  --regularization 0.5 \
+  --outfile_csv test_mincut_dice_orig_btc.csv
 status=$?
 echo "[SLURM] run_experiments_real_networks.py exit code = $status"
 exit $status
+
+# DICE on original features Wiki with consensus Louvain true labels
+# srun --unbuffered --label python -u run_experiments_real_networks.py \
+#   --model_name diffpool \
+#   --p_values 0.5 \
+#   --b_percentages 0.01 \
+#   --consensus \
+#   --consensus_labels_file Facebook_consensus_louvain.membership \
+#   --realizations 1 \
+#   --network_name Facebook \
+#   --num_layers 2 \
+#   --lr 0.01 \
+#   --epochs 500 \
+#   --dropout 0 \
+#   --regularization 0.5 \
+#   --outfile_csv test_diffpool_dice_original_facebook.csv
+# status=$?
+# echo "[SLURM] run_experiments_real_networks.py exit code = $status"
+# exit $status
+
+# DICE on  BitcoinTransactions with consensus Louvain true labels
+# srun --unbuffered --label python -u run_experiments_real_networks.py \
+#   --p_values 0.5 \
+#   --b_percentages 0.01 \
+#   --realizations 1 \
+#   --consensus \
+#   --consensus_labels_file BitcoinTransactions_consensus_louvain.membership \
+#   --network_name BitcoinTransactions \
+#   --outfile_csv test_dice_BitcoinTransactions_consensus_louvain.csv
+# status=$?
+# echo "[SLURM] run_experiments_real_networks.py exit code = $status"
+# exit $status
 
 
 # DICE on featurized Facebook 

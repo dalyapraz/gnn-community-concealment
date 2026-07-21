@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name=louvain_Wiki_FComDICE           # Job name for the array
+#SBATCH --job-name=dice_btc_diffpool_orig          # Job name for the array
 #SBATCH --partition=gpu                 # Partition (queue) name
 #SBATCH --output=logs/%x_%A_%a.out      # Output file for stdout (%A: array job ID, %a: task ID)
 #SBATCH --error=logs/%x_%A_%a.err       # Output file for stderr (%A: array job ID, %a: task ID)
@@ -10,9 +10,10 @@
 #SBATCH --ntasks-per-node=1             # Number of tasks per node
 #SBATCH --gpus-per-node=1
 #SBATCH --cpus-per-task=16              # Number of CPU cores per task
-#SBATCH --time=1-00:00:00                 # Wall clock time limit
+#SBATCH --time=2-00:00:00                 # Wall clock time limit
 #SBATCH --mem=100G                      # Memory limit per node
 #SBATCH -A r01712                       # Account (project) allocation
+#SBATCH --exclude=nid0689,nid0698 # exclude nid0689 due to GPU issues
 #SBATCH --array=0                  # Number of tasks in the array (0 to 7, 8 tasks in total)
 
 
@@ -32,7 +33,9 @@ export OPENBLAS_NUM_THREADS=${SLURM_CPUS_PER_TASK}
 module purge
 # module load python/gpu/3.11.5 # not available any more on big red 
 # module load cudatoolkit/11.8
-module load python/gpu/3.10.10
+# module load python/gpu/3.10.10
+module load python/gpu/3.11.5
+module load cudatoolkit/11.8
 
 echo "[SLURM] JobID: $SLURM_JOB_ID  Node: $(hostname)"
 echo "[SLURM] NodeList: ${SLURM_NODELIST-}  SubmitDir: ${SLURM_SUBMIT_DIR-}"
@@ -51,8 +54,10 @@ PY
 
 # Go to project
 cd "$SLURM_SUBMIT_DIR/gnn-clustering-attack-defense"
-mkdir -p results_dice_real_networks_louvain
-mkdir -p results_fcomdice_real_networks_louvain
+mkdir -p results_dice_diffpool_real_networks
+mkdir -p results_fcomdice_diffpool_real_networks
+mkdir -p results_dice_mincut_real_networks
+mkdir -p results_fcomdice_mincut_real_networks
 # pwd; ls -al
 
 # prove imports won’t crash before your prints:
@@ -295,11 +300,113 @@ echo "[SLURM] Launching run_experiments.py at $(date)"
   # --network_name Wiki \
   # --outfile_csv results_dice_real_networks_louvain/dmon_dice_Wiki.csv
 
-  srun --unbuffered --label python -u run_experiments_real_networks.py \
+  # srun --unbuffered --label python -u run_experiments_real_networks.py \
+  # --p_values 0.5 \
+  # --realizations 50 \
+  # --consensus \
+  # --consensus_labels_file Wiki_consensus_louvain.membership \
+  # --FComDICE \
+  # --network_name Wiki \
+  # --outfile_csv results_fcomdice_real_networks_louvain/dmon_fcomdice_Wiki.csv
+
+
+#   # DICE on featurized Wiki with consensus Louvain true labels
+# srun --unbuffered --label python -u run_experiments_real_networks.py \
+#   --model_name diffpool \
+#   --p_values 0.5 \
+#   --featurized \
+#   --featurized_sigma_c 2 \
+#   --network_name Facebook \
+#   --num_layers 1 \
+#   --lr 0.001 \
+#   --epochs 200 \
+#   --dropout 0.2 \
+#   --regularization 0.5 \
+#   --outfile_csv diffpool_dice_sigma2_facebook.csv
+# status=$?
+# echo "[SLURM] run_experiments_real_networks.py exit code = $status"
+# exit $status
+
+#   # FcomDICE on featurized Wiki with consensus Louvain true labels
+# srun --unbuffered --label python -u run_experiments_real_networks.py \
+#   --model_name diffpool \
+#   --p_values 0.5 \
+#   --featurized \
+#   --featurized_sigma_c 5 \
+#   --FComDICE \
+#   --network_name BitcoinTransactions \
+#   --num_layers 1 \
+#   --lr 0.001 \
+#   --epochs 500 \
+#   --dropout 0.5 \
+#   --regularization 0.5 \
+#   --outfile_csv diffpool_fcomdice_sigma5_btc.csv
+# status=$?
+# echo "[SLURM] run_experiments_real_networks.py exit code = $status"
+# exit $status
+
+#   # DICE on featurized BitcoinTransactions with consensus Louvain true labels
+# srun --unbuffered --label python -u run_experiments_real_networks.py \
+#   --model_name diffpool \
+#   --p_values 0.5 \
+#   --featurized \
+#   --featurized_sigma_c 0.01 \
+#   --network_name BitcoinTransactions \
+#   --num_layers 1 \
+#   --lr 0.001 \
+#   --epochs 200 \
+#   --dropout 0.5 \
+#   --regularization 0.5 \
+#   --outfile_csv diffpool_dice_sigma1_btc.csv
+# status=$?
+# echo "[SLURM] run_experiments_real_networks.py exit code = $status"
+# exit $status
+
+#   # FcomDICE on featurized Wiki with consensus Louvain true labels
+# srun --unbuffered --label python -u run_experiments_real_networks.py \
+#   --model_name diffpool \
+#   --p_values 0.5 \
+#   --featurized \
+#   --featurized_sigma_c 5 \
+#   --FComDICE \
+#   --network_name BitcoinTransactions \
+#   --num_layers 1 \
+#   --lr 0.001 \
+#   --epochs 500 \
+#   --dropout 0.5 \
+#   --regularization 0.5 \
+#   --outfile_csv diffpool_fcomdice_sigma5_btc.csv
+# status=$?
+# echo "[SLURM] run_experiments_real_networks.py exit code = $status"
+# exit $status
+
+#   # DICE on real features with consensus Louvain true labels
+srun --unbuffered --label python -u run_experiments_real_networks.py \
+  --model_name diffpool \
   --p_values 0.5 \
-  --realizations 50 \
-  --consensus \
-  --consensus_labels_file Wiki_consensus_louvain.membership \
-  --FComDICE \
-  --network_name Wiki \
-  --outfile_csv results_fcomdice_real_networks_louvain/dmon_fcomdice_Wiki.csv
+  --network_name BitcoinTransactions \
+  --num_layers 1 \
+  --lr 0.01 \
+  --epochs 500 \
+  --dropout 0 \
+  --regularization 0.5 \
+  --outfile_csv results_dice_diffpool_real_networks/diffpool_dice_original_btc.csv
+status=$?
+echo "[SLURM] run_experiments_real_networks.py exit code = $status"
+exit $status
+
+# FComDICE on real features with consensus Louvain true labels
+# srun --unbuffered --label python -u run_experiments_real_networks.py \
+#   --model_name diffpool \
+#   --p_values 0.5 \
+#   --network_name BitcoinTransactions \
+#   --FComDICE \
+#   --num_layers 1 \
+#   --lr 0.01 \
+#   --epochs 500 \
+#   --dropout 0 \
+#   --regularization 0.5 \
+#   --outfile_csv results_fcomdice_diffpool_real_networks/diffpool_fcomdice_original_btc.csv
+# status=$?
+# echo "[SLURM] run_experiments_real_networks.py exit code = $status"
+# exit $status

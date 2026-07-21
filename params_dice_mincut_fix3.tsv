@@ -1,0 +1,1 @@
+model=mincut attack=dice mu=0.01 sigma_c=2 minc=10 seed=42 feature=None outfile=mincut_dice_mu001_sigma2_mincomm10.csv

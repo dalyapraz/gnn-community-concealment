@@ -28,18 +28,18 @@ print("Device count:", torch.cuda.device_count())
 print("Device name:", torch.cuda.get_device_name(0) if torch.cuda.is_available() else "No CUDA")
 
 
-def train_model(data, true_labels, model_name,  num_features=32, num_layers=1, hidden=32, epochs=200, lr=0.005):
+def train_model(data, true_labels, model_name,  num_features=32, num_layers=1, hidden=32, epochs=200, lr=0.005, dropout=0.5, regularization=1.0):
     import dmon
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     num_clusters = len(set(true_labels))
     if model_name == "dmon":
-        model = dmon.DMoN(in_channels=num_features, num_clusters=num_clusters, hidden_channels=hidden,num_layers=num_layers, gcn_skip=True).to(device)
+        model = dmon.DMoN(in_channels=num_features, num_clusters=num_clusters, hidden_channels=hidden,num_layers=num_layers, gcn_skip=True, dropout=dropout, collapse_regularization=regularization).to(device)
     elif model_name == "mincut":
-        model = dmon.MinCut(in_channels=num_features, num_clusters=num_clusters, hidden_channels=hidden,num_layers=num_layers,gcn_skip=False).to(device)
+        model = dmon.MinCut(in_channels=num_features, num_clusters=num_clusters, hidden_channels=hidden,num_layers=num_layers,gcn_skip=False, dropout=dropout, ortho_regularization=regularization).to(device)
     elif model_name == "diffpool":
-        model = dmon.DiffPool(in_channels=num_features, num_clusters=num_clusters, hidden_channels=hidden,num_layers=num_layers, gcn_skip=False).to(device)
+        model = dmon.DiffPool(in_channels=num_features, num_clusters=num_clusters, hidden_channels=hidden,num_layers=num_layers, gcn_skip=False, dropout=dropout, entropy_regularization=regularization).to(device)
     else:
         raise ValueError(f"Unknown model name: {model_name}")
     # model = dmon.DMoN(in_channels=num_features, num_clusters=num_clusters, gcn_skip=True)
@@ -77,6 +77,9 @@ def main(args):
     hidden = args.hidden
     num_layers = args.num_layers
     lr = args.lr
+    dropout = args.dropout
+    regularization = args.regularization
+
     if FComDICE:
         print("Using Feature + Community DICE attack")
     else:
@@ -127,7 +130,7 @@ def main(args):
 
                 # Baseline on the clean graph for each realization
                 for realization in range(realizations):
-                    pred_labels = train_model(data, true_labels, model_name, epochs=epochs, hidden=hidden, num_layers=num_layers, lr=lr)
+                    pred_labels = train_model(data, true_labels, model_name, epochs=epochs, hidden=hidden, num_layers=num_layers, lr=lr, dropout=dropout, regularization=regularization)
                     ecs_initial = attacks.compute_ECS(true_labels, pred_labels)
                     M1 = attacks.compute_M1(target_list=target_community, labels=pred_labels)
                     M2 = attacks.compute_M2(target_list=target_community, labels=pred_labels)
@@ -171,7 +174,7 @@ def main(args):
                                 G_attacked = attacks.dice_community_attack(G.copy(), target_community, bb, p=p_val)
                             data_attacked = from_networkx(G_attacked)
                             data_attacked.x = torch.stack([G_attacked.nodes[i]['x'] for i in range(len(G_attacked))])
-                            pred_labels_attacked = train_model(data_attacked, true_labels, model_name, epochs=epochs, hidden=hidden, num_layers=num_layers, lr=lr)
+                            pred_labels_attacked = train_model(data_attacked, true_labels, model_name, epochs=epochs, hidden=hidden, num_layers=num_layers, lr=lr, dropout=dropout, regularization=regularization)
                             ecs = attacks.compute_ECS(true_labels, pred_labels_attacked)
                             M1 = attacks.compute_M1(target_list=target_community, labels=pred_labels_attacked)
                             M2 = attacks.compute_M2(target_list=target_community, labels=pred_labels_attacked)
@@ -204,6 +207,8 @@ if __name__ == "__main__":
     parser.add_argument("--hidden", type=int, default=32)
     parser.add_argument("--epochs", type=int, default=200)
     parser.add_argument("--lr", type=float, default=0.005)
+    parser.add_argument("--dropout", type=float, default=0.5)
+    parser.add_argument("--regularization", type=float, default=1.0)
     parser.add_argument("--FComDICE", action=argparse.BooleanOptionalAction, default=False, help="Use feature + community DICE attack")
     parser.add_argument("--attack_feature_mode", type=str, default="average_community", choices=[None, "connecting_node", "average_community"])
 

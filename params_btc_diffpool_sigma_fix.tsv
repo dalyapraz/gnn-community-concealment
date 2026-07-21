@@ -1,0 +1,16 @@
+model=diffpool attack=dice sigma_c=1 batch=1 feature=None outfile=diffpool_dice_sigma1_btc_r01_05.csv
+model=diffpool attack=dice sigma_c=1 batch=2 feature=None outfile=diffpool_dice_sigma1_btc_r06_10.csv
+model=diffpool attack=fcomdice sigma_c=0.1 batch=1 feature=average_community outfile=diffpool_fcomdice_sigma01_btc_r01_05.csv
+model=diffpool attack=fcomdice sigma_c=0.1 batch=2 feature=average_community outfile=diffpool_fcomdice_sigma01_btc_r06_10.csv
+model=diffpool attack=fcomdice sigma_c=0.1 batch=3 feature=average_community outfile=diffpool_fcomdice_sigma01_btc_r11_15.csv
+model=diffpool attack=fcomdice sigma_c=0.1 batch=4 feature=average_community outfile=diffpool_fcomdice_sigma01_btc_r16_20.csv
+model=diffpool attack=fcomdice sigma_c=0.1 batch=5 feature=average_community outfile=diffpool_fcomdice_sigma01_btc_r21_25.csv
+model=diffpool attack=fcomdice sigma_c=0.1 batch=6 feature=average_community outfile=diffpool_fcomdice_sigma01_btc_r26_30.csv
+model=diffpool attack=fcomdice sigma_c=0.1 batch=7 feature=average_community outfile=diffpool_fcomdice_sigma01_btc_r41_45.csv
+model=diffpool attack=fcomdice sigma_c=0.1 batch=8 feature=average_community outfile=diffpool_fcomdice_sigma01_btc_r46_50.csv
+model=diffpool attack=fcomdice sigma_c=5 batch=5 feature=average_community outfile=diffpool_fcomdice_sigma5_btc_r21_25.csv
+model=diffpool attack=fcomdice sigma_c=5 batch=6 feature=average_community outfile=diffpool_fcomdice_sigma5_btc_r26_30.csv
+model=diffpool attack=fcomdice sigma_c=5 batch=7 feature=average_community outfile=diffpool_fcomdice_sigma5_btc_r31_35.csv
+model=diffpool attack=fcomdice sigma_c=5 batch=8 feature=average_community outfile=diffpool_fcomdice_sigma5_btc_r36_40.csv
+model=diffpool attack=fcomdice sigma_c=5 batch=9 feature=average_community outfile=diffpool_fcomdice_sigma5_btc_r41_45.csv
+model=diffpool attack=fcomdice sigma_c=5 batch=10 feature=average_community outfile=diffpool_fcomdice_sigma5_btc_r46_50.csv
