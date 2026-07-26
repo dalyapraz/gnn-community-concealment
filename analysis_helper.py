@@ -1298,6 +1298,252 @@ def plot_relative_change_mu_sigma_heatmaps_multiple_methods(
     return rel_df, limits
 
 
+def plot_absolute_change_mu_sigma_heatmaps_multiple_methods(
+    df_base: pd.DataFrame,
+    modified_dfs: dict,
+    metrics=('M1', 'M2'),
+    aggregate='mean',                     # 'mean' or 'integral'
+    scale=1e3,                            # report 10^3 * absolute change
+    cmap=None,
+    annot=True,
+    sd=True,
+    fmt='.3f',
+    figsize_per_row=(14, 5)
+):
+    """
+    For each metric and (mu, sigma_c), compute absolute change over b:
+
+        diff(b) = scale * (Mod(b) - Base(b))
+
+    Then aggregate over b:
+      - 'mean'     : average_b diff(b)
+      - 'integral' : integral diff(b) db
+
+    Plots mu x sigma_c heatmaps with one row per modified method
+    and one column per metric. Adds standard deviation to each cell if sd=True.
+
+    Assumes dataframes have:
+        ['mu', 'sigma_c', 'b_percentage', <metrics...>]
+
+    Pre-filter to desired p before calling if needed.
+    """
+
+    labels = {
+    'ECS': r"$ECS$",
+    'M1': (
+        r"$10^3 \cdot \mathrm{avg}(M_1^{\mathrm{FComDICE}} - M_1^{\mathrm{DICE}})$"
+        if scale == 1e3 else
+        r"$\mathrm{avg}(M_1^{\mathrm{FComDICE}} - M_1^{\mathrm{DICE}})$"
+    ),
+    'M2': (
+        r"$10^3 \cdot \mathrm{avg}(M_2^{\mathrm{FComDICE}} - M_2^{\mathrm{DICE}})$"
+        if scale == 1e3 else
+        r"$\mathrm{avg}(M_2^{\mathrm{FComDICE}} - M_2^{\mathrm{DICE}})$"
+    ),
+    'sigma_c': r"$\sigma_c$",
+    'mu': r"$\mu$"
+}
+
+    if cmap is None:
+        cmap = {
+            'ECS': 'YlGnBu',
+            'M1': 'PuBuGn',
+            'M2': 'YlOrBr'
+        }
+    elif isinstance(cmap, str):
+        cmap = {m: cmap for m in metrics}
+
+    # Ensure numeric parameter columns
+    for df in [df_base] + list(modified_dfs.values()):
+        df['mu'] = pd.to_numeric(df['mu'], errors='coerce')
+        df['sigma_c'] = pd.to_numeric(df['sigma_c'], errors='coerce')
+        df['b_percentage'] = pd.to_numeric(df['b_percentage'], errors='coerce')
+        for m in metrics:
+            df[m] = pd.to_numeric(df[m], errors='coerce')
+
+    mu_values = sorted(
+        pd.concat([df_base['mu']] + [d['mu'] for d in modified_dfs.values()])
+        .dropna()
+        .unique()
+    )
+
+    sigma_values = sorted(
+        pd.concat([df_base['sigma_c']] + [d['sigma_c'] for d in modified_dfs.values()])
+        .dropna()
+        .unique()
+    )
+
+    def mean_curve_over_b(df, metric):
+        return df.groupby('b_percentage')[metric].mean().sort_index()
+
+    rows = []
+
+    for method_label, df_mod in modified_dfs.items():
+        for metric in metrics:
+            for mu in mu_values:
+                db_mu = df_base[df_base['mu'] == mu]
+                dm_mu = df_mod[df_mod['mu'] == mu]
+
+                for sc in sigma_values:
+                    base = db_mu[db_mu['sigma_c'] == sc]
+                    mod = dm_mu[dm_mu['sigma_c'] == sc]
+
+                    if base.empty or mod.empty:
+                        continue
+
+                    y_base = mean_curve_over_b(base, metric)
+                    y_mod = mean_curve_over_b(mod, metric)
+
+                    common_b = sorted(set(y_base.index).intersection(set(y_mod.index)))
+
+                    if len(common_b) < 2:
+                        continue
+
+                    x = np.array(common_b, dtype=float)
+                    base_vals = y_base.reindex(common_b).to_numpy(float)
+                    mod_vals = y_mod.reindex(common_b).to_numpy(float)
+
+                    diff = scale * (mod_vals - base_vals)
+
+                    if aggregate == 'integral':
+                        diff_value = float(np.trapz(diff, x))
+                        diff_sd = None
+                    elif aggregate == 'mean':
+                        diff_value = float(np.nanmean(diff))
+                        diff_sd = float(np.nanstd(diff))
+                    else:
+                        raise ValueError("aggregate must be 'mean' or 'integral'")
+
+                    rows.append({
+                        'method': method_label,
+                        'metric': metric,
+                        'mu': float(mu),
+                        'sigma_c': float(sc),
+                        'diff_value': diff_value,
+                        'diff_sd': diff_sd
+                    })
+
+    diff_df = pd.DataFrame(rows)
+
+    if diff_df.empty:
+        raise ValueError("No absolute change values computed. Ensure overlapping (mu, sigma_c) and b grids.")
+
+    # Shared color scale per metric
+    limits = {}
+
+    for metric in metrics:
+        vals = diff_df.loc[diff_df['metric'] == metric, 'diff_value'].to_numpy()
+        vals = vals[~np.isnan(vals)]
+
+        if vals.size:
+            limits[metric] = (float(vals.min()), float(vals.max()))
+        else:
+            limits[metric] = (0.0, 0.0)
+
+    n_rows = len(modified_dfs)
+    n_cols = len(metrics)
+
+    fig, axes = plt.subplots(
+        n_rows,
+        n_cols,
+        figsize=(figsize_per_row[0], figsize_per_row[1] * n_rows)
+    )
+
+    if n_rows == 1 and n_cols == 1:
+        axes = np.array([[axes]])
+    elif n_rows == 1:
+        axes = np.array([axes])
+    elif n_cols == 1:
+        axes = axes.reshape(n_rows, 1)
+
+    for r, (method_label, _) in enumerate(modified_dfs.items()):
+        df_row = diff_df[diff_df['method'] == method_label]
+
+        for c, metric in enumerate(metrics):
+            ax = axes[r, c]
+            df_m = df_row[df_row['metric'] == metric]
+
+            pivot = df_m.pivot_table(
+                index='mu',
+                columns='sigma_c',
+                values='diff_value'
+            )
+
+            vmin, vmax = limits[metric]
+            metric_cmap = cmap.get(metric, 'YlGnBu') if isinstance(cmap, dict) else cmap
+
+            if sd and aggregate == 'mean':
+                sd_df = df_m.pivot_table(
+                    index='mu',
+                    columns='sigma_c',
+                    values='diff_sd'
+                )
+
+                def fmt_dynamic(v):
+                    if pd.isna(v):
+                        return ""
+                    if abs(v) >= 1:
+                        return f"{v:.2f}"
+                    else:
+                        return f"{v:.2g}"
+
+                annot_data = (
+                    pivot.map(fmt_dynamic)
+                    + "\n± "
+                    + sd_df.map(fmt_dynamic)
+                )
+
+                annot_fmt = ""
+            else:
+                annot_data = annot
+                annot_fmt = fmt
+
+            sns.heatmap(
+                pivot,
+                cmap=metric_cmap,
+                annot=annot_data,
+                fmt=annot_fmt,
+                ax=ax,
+                vmin=vmin,
+                vmax=vmax,
+                cbar=True
+            )
+
+            # Make SD smaller than the mean inside each cell
+            for text in ax.texts:
+                if "\n±" in text.get_text():
+                    mean_text, sd_text = text.get_text().split("\n", 1)
+                    x_pos, y_pos = text.get_position()
+
+                    text.set_text(mean_text)
+                    text.set_fontsize(11)
+
+                    ax.text(
+                        x_pos,
+                        y_pos + 0.22,
+                        sd_text,
+                        ha='center',
+                        va='center',
+                        fontsize=9,
+                        color=text.get_color()
+                    )
+
+            metric_label = labels.get(metric, metric)
+
+            ax.set_title(metric_label, fontsize=13)
+            ax.set_xlabel(labels['sigma_c'], fontsize=13)
+
+            if c == 0:
+                ax.set_ylabel(labels['mu'], fontsize=13)
+            else:
+                ax.set_ylabel('')
+                ax.tick_params(axis='y', labelleft=False)
+
+    plt.tight_layout()
+    plt.show()
+
+    return diff_df, limits
+
 def plot_relative_change_vs_sigma_for_methods(
     df_base: pd.DataFrame,
     modified_dfs: dict,                 # {"Method A": dfA, "Method B": dfB, ...}
@@ -1984,9 +2230,9 @@ def plot_relative_change_real_networks_sigma_heatmaps_multiple_methods(
                     index='dataset', columns='sigma_c', values='rel_sd'
                 )
                 annot_data = (
-                    pivot.applymap(lambda v: f"{v:.2f}") +
+                    pivot.map(lambda v: f"{v:.2f}") +
                     "\n± " +
-                    sd_df.applymap(lambda v: f"{v:.2f}")
+                    sd_df.map(lambda v: f"{v:.2f}")
                 )
                 fmt_used = ""
             else:
@@ -2023,3 +2269,139 @@ def plot_relative_change_real_networks_sigma_heatmaps_multiple_methods(
     plt.show()
 
     return rel_df, limits
+
+
+
+###### Statistical helper functions for analysis of results #########
+
+import numpy as np
+from scipy.stats import chi2
+from lfr_generator import generate_featurized_lfr_graph,  precompute_node_comm_neg_sqeuclidean
+import attacks
+
+def get_degree_sequence(G):
+    """
+    Return the degree sequence of an undirected NetworkX graph.
+
+    Parameters
+    ----------
+    G : networkx.Graph
+        Simple undirected graph.
+
+    Returns
+    -------
+    np.ndarray
+        One degree value per node.
+    """
+
+    return np.asarray([degree for _, degree in G.degree()],dtype=int,)
+
+
+def get_powerlaw_statistics(degree_sequence, d_min=2):
+    """
+    Calculate the statistics used by Nettack.
+
+    Parameters
+    ----------
+    degree_sequence : array-like
+        Degree sequence of the graph.
+
+    d_min : int, default=2
+        Minimum degree included in the power-law fit.
+
+    Returns
+    -------
+    n : int
+        Number of degrees greater than or equal to d_min.
+
+    S_d : float
+        Sum of log degrees greater than or equal to d_min.
+    """
+    degree_sequence = np.asarray(degree_sequence)
+
+    degrees_in_tail = degree_sequence[degree_sequence >= d_min]
+
+    n = len(degrees_in_tail)
+    S_d = np.sum(np.log(degrees_in_tail))
+    return n, S_d
+
+def compute_alpha(n, S_d, d_min=2):
+    """
+    Approximate the exponent alpha of a power-law distribution
+    using the formula implemented in Nettack.
+    """
+    return (n/ (S_d- n * np.log(d_min - 0.5))+ 1)
+
+
+def compute_log_likelihood(n, alpha, S_d, d_min=2):
+    """
+    Compute log likelihood of the powerlaw fit, using the formula implemented in Nettack.
+
+    Parameters
+    ----------
+    n: int
+        Number of entries in the old distribution that are larger than or equal to d_min.
+
+    alpha: float
+        The estimated alpha of the power law distribution
+
+    S_d: float
+         Sum of log degrees in the distribution that are larger than or equal to d_min.
+
+    d_min: int
+        The minimum degree of nodes to consider
+
+    Returns
+    -------
+    float: the estimated log likelihood
+    """
+
+    return n * np.log(alpha) + n * alpha * np.log(d_min) - (alpha + 1) * S_d
+
+def fit_powerlaw(degree_sequence, d_min=2):
+    """
+    Fit the Nettack power-law approximation to a degree sequence.
+    """
+    n, S_d = get_powerlaw_statistics(degree_sequence,d_min=d_min)
+    alpha = compute_alpha(n=n, S_d=S_d, d_min=d_min)
+    log_likelihood = compute_log_likelihood(n=n, alpha=alpha, S_d=S_d, d_min=d_min)
+
+    return {"n": n, "S_d": S_d, "alpha": alpha, "log_likelihood": log_likelihood}
+
+def test_similar_powerlaw_distributions(degree_sequence_1, degree_sequence_2, d_min=2):
+    """
+    Test whether two degree sequences are likely to have been drawn from the same power-law distribution.
+
+    Parameters
+    ----------
+    degree_sequence_1 : array-like
+        Degree sequence of the first graph.
+
+    degree_sequence_2 : array-like
+        Degree sequence of the second graph.
+
+    d_min : int, default=2
+        Minimum degree included in the power-law fit.
+
+    Returns
+    -------
+    likelihood_ratio : float
+        The likelihood ratio statistic for the test.
+
+    p_value : float
+        The p-value for the test.
+    """
+    fit_1 = fit_powerlaw(degree_sequence_1, d_min=d_min)
+    fit_2 = fit_powerlaw(degree_sequence_2, d_min=d_min)
+
+    n_combined = (fit_1["n"] + fit_2["n"])
+    S_d_combined = (fit_1["S_d"] + fit_2["S_d"])
+    alpha_combined = compute_alpha(n=n_combined, S_d=S_d_combined, d_min=d_min)
+    log_likelihood_combined = compute_log_likelihood(n=n_combined, alpha=alpha_combined, S_d=S_d_combined, d_min=d_min)
+
+    likelihood_ratio = (-2 * log_likelihood_combined + 2 * (
+            fit_1["log_likelihood"] + fit_2["log_likelihood"]) )
+    
+    p_value = chi2.sf(likelihood_ratio, df=1)
+
+    return likelihood_ratio, p_value
