@@ -2,6 +2,21 @@
 
 This repository contains code to run experiments on hiding a target community from GNN-based community detection via graph perturbations including the proposed methods FCom-DICE (Feature-Community-guided DICE).
 
+# Citation
+If you use this code or the associated research in your work, please cite our paper:
+
+```bibtex
+@misc{manatova2026communityconcealmentunsupervisedgraph,
+      title={Community Concealment from Unsupervised Graph Learning-Based Clustering}, 
+      author={Dalyapraz Manatova and Pablo Moriano and L. Jean Camp},
+      year={2026},
+      eprint={2602.12250},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG},
+      url={https://arxiv.org/abs/2602.12250}, 
+}
+```
+
 ## Key files
 
 - `lfr_generator.py` — LFR graph + feature generation.
