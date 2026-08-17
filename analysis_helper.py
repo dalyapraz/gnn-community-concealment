@@ -2239,11 +2239,17 @@ def plot_relative_change_real_networks_sigma_heatmaps_multiple_methods(
                 annot_data = True
                 fmt_used = fmt
 
-            sns.heatmap(
+            hm = sns.heatmap(
                 pivot, cmap=metric_cmap,
                 annot=annot_data, fmt=fmt_used,
                 vmin=vmin, vmax=vmax,
-                ax=ax, cbar=True
+                ax=ax, cbar=True,
+                cbar_kws={
+                "fraction": 0.035,
+                "pad": 0.02,
+                "aspect": 30
+            },
+            annot_kws={"fontsize": 10}
             )
 
             # SD smaller font
@@ -2252,20 +2258,34 @@ def plot_relative_change_real_networks_sigma_heatmaps_multiple_methods(
                     mean, sd = text.get_text().split("\n", 1)
                     x, y = text.get_position()
                     text.set_text(mean)
-                    text.set_fontsize(10)
+                    text.set_fontsize(11)
+                    # fontsize=10 for DMoN
                     ax.text(
                         x, y + 0.28, sd,
                         ha='center', va='center',
-                        fontsize=7, color=text.get_color()
+                        fontsize=8, color=text.get_color()
+                        # fontsize=7 for DMoN
                     )
 
-            ax.set_title(labels.get(metric, metric) + unit)
-            ax.set_xlabel(labels['sigma_c'])
-            ax.set_ylabel(labels['dataset'] if c == 0 else "")
+            ax.set_title(labels.get(metric, metric) + unit, fontsize=14)
+            ax.set_xlabel(labels['sigma_c'], fontsize=13)
+            ax.set_ylabel(labels['dataset'] if c == 0 else "", fontsize=13)
+            ax.tick_params(axis='x', labelsize=11)
+            ax.tick_params(axis='y', labelsize=11)
             if c > 0:
                 ax.tick_params(axis='y', labelleft=False)
+            # cbar = hm.collections[0].colorbar
+            # cbar.set_ticks(np.linspace(vmin, vmax, 5))
+            # cbar.ax.tick_params(labelsize=10)
 
     plt.tight_layout()
+    # fig.subplots_adjust(
+    # left=0.07,
+    # right=0.98,
+    # top=0.88,
+    # bottom=0.20,
+    # wspace=0.1
+    # )
     plt.show()
 
     return rel_df, limits
