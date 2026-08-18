@@ -1,1 +1,5 @@
 D_BitcoinTransactions_k38_R50.npy
+__pycache__/
+*.pyc
+fcomdice_degree_distribution_results_50r.csv
+fcomdice_feature_distribution_results_10r.csv

@@ -39,7 +39,9 @@ def generate_features_from_communities(
         sigma_c=3.0,
         sigma=1.0,
         n_clusters_f=None,
-        seed=7):
+        seed=7,
+        centroids=None,
+        return_centroids=False):
     """
     Generate node features based on community structure or randomly.
 
@@ -54,6 +56,8 @@ def generate_features_from_communities(
 
     Returns:
     - features: np.array of shape [n_nodes, num_features]
+    If centroids are supplied, they are held fixed and only
+    node-level feature noise is resampled.
     """
     np.random.seed(seed)
     n_nodes = len(true_labels)
@@ -69,7 +73,8 @@ def generate_features_from_communities(
         if n_clusters_f is None:
             n_clusters_f = n_communities    # by default, set number of feature clusters equal to number of communities
         # centroids are drawn from ~N(0, sigma_c*I)
-        centroids = np.random.multivariate_normal(np.zeros(num_features), 
+        if centroids is None:
+            centroids = np.random.multivariate_normal(np.zeros(num_features), 
                                                 np.identity(num_features) * sigma_c, n_clusters_f)
         # print("Centroids shape:", centroids.shape, "Centroids:", centroids)
 
@@ -109,7 +114,8 @@ def generate_features_from_communities(
         
     else:
         raise ValueError("mode must be one of: 'random', 'gaussian'")
-
+    if return_centroids:
+        return features, centroids
     # features += np.random.normal(scale=noise_scale, size=features.shape) # Add random noise to the data.
     return features
 
