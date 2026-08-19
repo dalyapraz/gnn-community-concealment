@@ -1,13 +1,13 @@
-# Hiding Community from Graph Neural Networks
+# Community Concealment from Graph Neural Networks
 
-This repository contains code to run experiments on hiding a target community from GNN-based community detection via graph perturbations including the proposed methods FCom-DICE (Feature-Community-guided DICE).
+This repository contains code to run experiments on concealing a target community from GNN-based community detection via graph perturbations including the proposed methods FCom-DICE (Feature-Community-guided DICE).
 
 # Citation
 If you use this code or the associated research in your work, please cite our paper:
 
 ```bibtex
 @misc{manatova2026communityconcealmentunsupervisedgraph,
-      title={Community Concealment from Unsupervised Graph Learning-Based Clustering}, 
+      title={Community Concealment from Graph Neural Networks}, 
       author={Dalyapraz Manatova and Pablo Moriano and L. Jean Camp},
       year={2026},
       eprint={2602.12250},
@@ -19,8 +19,8 @@ If you use this code or the associated research in your work, please cite our pa
 
 ## Key files
 
-- `lfr_generator.py` — LFR graph + feature generation.
-- `dmon.py` — DMoN implementation (and related GNN utilities).
+- `lfr_generator.py` — LFR graph + node feature generation.
+- `dmon.py` — GNN-based community detection models and supporting utilities, including DMoN, DiffPool, and MinCut.
 - `attacks.py` — perturbation methods (DICE and FCom-DICE).
     - DICE (structure-only): `dice_community_attack(...)`
     - FCom-DICE (feature + community): `fcom_dice_community_attack(...)` with `feature_mode = average_community` for changing node features to the average of the community the node is attaching to.
@@ -38,9 +38,10 @@ Create a results directory:
 mkdir -p results
 ```
 
-### LFR Demo (DICE)
+### LFR demo DiffPool + DICE
 ```bash
 python run_experiments.py \
+  --model diffpool \
   --realizations 2 \
   --n 1000 \
   --mu_values 0.3 \
@@ -51,10 +52,11 @@ python run_experiments.py \
   --outfile_csv results/demo_lfr.csv
 ```
 
-### LFR Demo (FCom-DICE)
+### LFR demo DMoN + FCom-DICE
 
 ```bash
 python run_experiments.py \
+  --model dmon \
   --FComDICE \
   --attack_feature_mode average_community \
   --realizations 2 \
@@ -102,7 +104,7 @@ Experiments produce CSV files with rows like:
 
 Example filename pattern:
 
-`dmon_fcomdice_<mu>_mincomm_<k>_sigma<...>_p<...>_<feature_mode>.csv`
+`<model>_fcomdice_<mu>_mincomm_<k>_sigma<...>_p<...>_<feature_mode>.csv`
 
 
 ### Reproducing paper plots
